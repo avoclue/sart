@@ -45,6 +45,7 @@ select, input[type="search"] {
   margin-bottom: var(--space-2);
 }
 .settings-grid .hint { margin: 0.35rem 0 0; }
+.field-hint { margin: -0.5rem 0 var(--space-1); }
 .filters { align-items: end; }
 .filters .check { min-height: 44px; align-items: center; }
 
@@ -156,7 +157,7 @@ legend { font-weight: 700; padding: 0 0.4rem; color: var(--blue); }
 .glossary > div { padding: var(--space-2) 0; border-bottom: 1px solid var(--edge); }
 .glossary > div:first-child { border-top: 1px solid var(--edge); }
 .glossary dt { font-weight: 700; margin-bottom: 0.25rem; }
-.glossary dd { margin: 0; max-width: 68ch; }
+.glossary dd { margin: 0; }
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.85em;
