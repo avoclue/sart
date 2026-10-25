@@ -1,6 +1,6 @@
 # SART — Implementation Plan
 
-Status: **draft, waiting on open questions** (see the end of this file).
+Status: **draft — answers recorded in §3, backend + research items awaiting confirmation (§8)**
 
 ## 1. Goal
 
@@ -61,106 +61,87 @@ is the digit display plus the blank that follows it, and the trial is scored
 once at the end of that window. Metric definitions stay the same.
 (Needs your confirmation — open question Q5.)
 
-## 3. Proposed architecture (free, minimal)
+## 3. Decisions (answers from 2026-10-25)
 
-### Recommended: static page + Google Sheets (via Google Apps Script)
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Backend | Not Google Apps Script. A simple admin page with export is needed. Final choice is in §4. |
+| 2 | Identity form | Name only for now. More fields are still being discussed. |
+| 3 | Purpose | **Research.** A consent checkbox was not requested. It is noted as a likely requirement for ethics approval. |
+| 4 | Settings | Same options and defaults as the reference (§2). |
+| 5 | Double-count bug | Fix it. |
+| 6 | Reaction time | Record it. |
+| 7 | Results visible to participant | Yes. |
+| 8 | Retry | Allowed. |
+| 9 | Language | UI in **Bahasa Indonesia**. |
+| 10 | Hosting | Cloudflare. |
+| 11 | Scale and devices | About 30 participants, desktop first. Mobile must still work. |
+
+## 4. Architecture
+
+### Proposed: everything on Cloudflare (Pages + Pages Functions + D1)
 
 ```
-Browser (one static HTML/JS page)
-   │  GET settings   ─────────▶ Apps Script web app ──▶ Sheet tab "Settings"
-   │  POST result    ─────────▶ Apps Script web app ──▶ Sheet tab "Results" (append row)
+Browser ── static HTML/JS (Cloudflare Pages)
+   │ GET  /api/settings           → D1 table settings
+   │ POST /api/results            → D1 tables sessions + trials
+   │ /admin  (password protected) → view/edit settings, list results, CSV export
 ```
 
-- **Frontend:** plain HTML, CSS and vanilla JS. No framework and no build step.
-- **Backend:** one Google Apps Script file (`doGet` returns settings, `doPost` appends a result row).
-- **Storage:** one Google Sheet with two tabs: `Settings` and `Results`.
-- **Admin:** the admin edits the `Settings` tab and reads/filters/exports the
-  `Results` tab directly in Google Sheets. Access is controlled by Google's own
-  sharing. **No admin page and no auth code to build.**
-- **Hosting the page:** either let Apps Script serve the HTML (one deployment, no
-  CORS), or use Cloudflare Pages / Netlify (free, nicer URL). Note: GitHub Pages
-  is free only for **public** repos. A private repo needs a paid plan.
+- **Frontend:** plain HTML, CSS and vanilla JS, with no build step.
+- **API:** a few small Pages Functions (JS) with no framework.
+- **DB:** Cloudflare D1 (SQLite). The free tier (5 GB, 100k writes/day) is far more than
+  30 participants need. Unlike Supabase's free tier, it does not pause when it isn't used.
+- **Admin auth:** one admin password stored as a Cloudflare secret and checked by
+  the Functions (HTTP Basic Auth). This is the simplest option for a single admin.
+  Cloudflare Access is an optional upgrade later.
 
-Why this option: it has the fewest moving parts, costs nothing, never "sleeps",
-and the admin already knows how to use a spreadsheet.
+### Alternative: Cloudflare Pages + Supabase
 
-Trade-offs to accept:
+This also works for 30 users. But free projects **pause after about 7 days without
+activity**, and a research study with gaps between sessions will hit that. It also
+adds a second provider and requires writing Row Level Security policies.
 
-- The submit endpoint is public, so anyone with the URL could post fake rows. This is
-  the same for any no-login app. Mitigation if needed: honeypot field plus a
-  basic server-side shape check.
-- Scoring happens in the browser, so a technical user could tamper with their
-  own result. For an attention test without login this is normally acceptable.
-- Apps Script has daily quotas (roughly 20k URL calls per day on a consumer account).
-  That is far above what a test like this needs.
-- If Apps Script serves the HTML, Google shows a small banner at the top of the page.
+## 5. Data model (D1)
 
-### Alternative: static page + Supabase (free tier)
+- `settings`: a single row with `display_duration_ms`, `total_trials`, `target_frequency`
+- `sessions`: one row per test attempt
+  - `id`, `created_at` (UTC), `participant_name`, `attempt_no`, `status`
+    (completed/aborted, see Q-R6)
+  - settings used, plus the summary metrics (§6)
+  - device info: user agent, screen size, input type (keyboard/touch),
+    `tab_hidden_count`
+- `trials`: one row per trial (the raw data, so any metric can be recomputed later)
+  - `session_id`, `trial_no`, `digit`, `is_target`, `responded`, `rt_ms`,
+    `outcome` (hit/omission/commission/withhold), `extra_presses`
 
-- Postgres with Row Level Security: anonymous users can only `INSERT` results;
-  only the admin can read results and update settings.
-- Needs an admin page we build ourselves (login, settings form, results table,
-  CSV export). That is roughly 2–3 times the work of the Sheets option.
-- Free projects **pause after ~7 days without activity** and must be resumed by hand.
+## 6. Metrics
 
-Use this only if you need a real admin UI, many concurrent users, or plan to
-grow the app later.
+Participants see the four reference metrics: Accuracy, Correct Hits, Commission
+Errors and Omission Errors.
 
-## 4. Data model
+These are stored for researchers only (pending confirmation, Q-R2):
+- mean RT and SD of RT on correct hits
+- RT coefficient of variation (SD/mean)
+- commission rate (commissions ÷ 3-trials)
+- omission rate (omissions ÷ non-3 trials)
+- anticipation count (presses faster than 100 ms)
 
-**Settings** (one row; the admin edits the values)
+## 7. Implementation steps
 
-| key | value |
-|---|---|
-| displayDurationMs | 500 |
-| totalTrials | 100 |
-| targetFrequency | 0.2 |
+1. Scaffold: `public/` (index, admin, js, css), `functions/api/…`, `schema.sql`,
+   `wrangler.toml`, `README.md`.
+2. SART engine as pure functions: sequence generation, trial state machine,
+   scoring (every trial scored once), RT metrics. Unit tests with `node --test`.
+3. Participant UI (Indonesian): name form, instructions, test, results, retry.
+   Keyboard and touch input, ignoring held-key auto-repeat.
+4. API: `GET /api/settings`, `POST /api/results` (validate, then insert the session and its trials in one batch).
+5. Admin: login, settings form, sessions table, and two CSV exports
+   (sessions summary and trial-level data).
+6. Deploy guide: create the D1 database, apply the schema, set `ADMIN_PASSWORD`, connect the repo to Pages.
 
-The values allowed match the reference options. Do we also allow custom values?
-See Q4.
+## 8. Open items
 
-**Results** (one row per completed test)
-
-| column | notes |
-|---|---|
-| submittedAt | server timestamp |
-| sessionId | random UUID generated in the browser, used to remove duplicates on retry |
-| *identity fields* | depends on Q2 (for example name, email, age, …) |
-| displayDurationMs, totalTrials, targetFrequency | the settings actually used |
-| accuracy, correctHits, commissionErrors, omissionErrors, correctWithholds | scores |
-| meanRtMs *(optional)* | depends on Q6 |
-| userAgent | helps tell desktop results from mobile results |
-
-## 5. User flow
-
-1. **Identity form.** Fields depend on Q2. Validated in the browser.
-2. **Instructions.** "Press SPACE (or tap) for every digit EXCEPT 3", plus a
-   Start button. No settings shown.
-3. **Test.** Large digit in the centre, plus a live trial counter. Whether to show live hits and errors
-   like the reference does is Q7.
-4. **Results.** Accuracy, hits, commission errors and omission errors, shown or hidden
-   depending on Q7. The result is saved automatically, with a retry if the network fails.
-5. **Done screen.** Whether participants can retake the test is Q8.
-
-## 6. Implementation steps
-
-1. Repo scaffold: `index.html`, `app.js`, `style.css`, `apps-script/Code.gs`, `README.md`.
-2. SART engine (pure functions, kept separate from the DOM so it is testable):
-   sequence generation, trial state machine, scoring with the double-count fix.
-3. UI: form → instructions → test → results. Desktop and mobile input. Mobile layout.
-4. Apps Script backend: `doGet` (settings), `doPost` (validate and append a row), plus a
-   setup function that creates both tabs with their headers.
-5. Wire up: load settings before Start, submit the result, show error and retry states.
-6. Tests: a few unit tests for the sequence and scoring (Node's built-in
-   `node --test`, so no dependencies), plus a manual run in Chrome and on a phone.
-7. Deploy: step-by-step guide in the README covering creating the Sheet, pasting the script, deploying
-   it as a web app, and setting the endpoint URL in the frontend.
-
-## 7. Out of scope (unless you say otherwise)
-
-Login and accounts, charts and analytics dashboards, multiple languages, practice
-blocks, a classic SART mask and variable font sizes, and per-user history.
-
-## 8. Open questions
-
-See the chat message accompanying this file. Answers will be recorded here.
+- Backend choice: D1 (proposed) or Supabase.
+- Research questions Q-R1 … Q-R8 (see chat, 2026-10-25). Answers will be recorded here.
+- Consent checkbox: requested? (Ethics committees usually require one.)
