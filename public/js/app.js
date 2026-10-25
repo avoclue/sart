@@ -6,7 +6,11 @@ import {
 } from './sart.js';
 import { API_BASE } from './config.js';
 
-const FEEDBACK_TEXT = { correct: 'Benar', wrong: 'Salah' };
+const FEEDBACK = {
+  correct: { title: 'Benar', reason: '', kind: 'correct' },
+  commission: { title: 'Salah', reason: 'Jangan tekan saat angka 3 muncul.', kind: 'wrong' },
+  omission: { title: 'Salah', reason: 'Tekan untuk setiap angka selain 3.', kind: 'wrong' },
+};
 
 const $ = (id) => document.getElementById(id);
 
@@ -71,8 +75,8 @@ async function openInstructions() {
   $('practice-note').hidden = !practice;
   $('feedback-note').hidden = feedbackMode === 'off';
   $('feedback-note').textContent = feedbackMode === 'all'
-    ? 'Setiap selesai satu angka, akan muncul tulisan "Benar" atau "Salah".'
-    : 'Jika jawaban Anda keliru, akan muncul tulisan "Salah".';
+    ? 'Setiap selesai satu angka, akan muncul tulisan "Benar" atau "Salah". Jika salah, alasannya ikut ditampilkan.'
+    : 'Jika jawaban Anda keliru, akan muncul tulisan "Salah" beserta alasannya.';
   $('duration-note').textContent = `Tes berlangsung sekitar ${estimateMinutes(settings)} menit.`;
   $('settings-loading').hidden = true;
   $('instructions-body').hidden = false;
@@ -85,10 +89,17 @@ $('start-test').addEventListener('click', startTest);
 
 // Test runner
 
-function setStimulus(text, kind = '') {
-  const el = $('stimulus');
-  el.textContent = text;
-  el.className = kind ? `stimulus feedback feedback-${kind}` : 'stimulus';
+function setStimulus(text) {
+  $('stimulus').textContent = text;
+  $('stimulus').className = 'stimulus';
+  $('stimulus-reason').textContent = '';
+}
+
+function showFeedback(key) {
+  const { title, reason, kind } = FEEDBACK[key];
+  $('stimulus').textContent = title;
+  $('stimulus').className = `stimulus feedback feedback-${kind}`;
+  $('stimulus-reason').textContent = reason;
 }
 
 function clearTimers() {
@@ -148,7 +159,7 @@ function onPress(inputType) {
   run.inputTypes.push(inputType);
   if (isFirst) {
     const feedback = feedbackFor(outcomeOf(run.current.isTarget, true), run.feedbackMode);
-    if (feedback) setStimulus(FEEDBACK_TEXT[feedback], feedback);
+    if (feedback) showFeedback(feedback);
   }
 }
 
@@ -163,7 +174,7 @@ function endWindow() {
     beginTrial();
     return;
   }
-  setStimulus(FEEDBACK_TEXT[feedback], feedback);
+  showFeedback(feedback);
   later(FEEDBACK_PAUSE_MS, () => {
     setStimulus('');
     beginTrial();

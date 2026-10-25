@@ -122,11 +122,14 @@ test('accuracy of an aborted session uses trials completed', () => {
 
 test('feedbackFor follows the feedback mode', () => {
   assert.equal(feedbackFor('commission', 'off'), null);
-  assert.equal(feedbackFor('commission', 'errors'), 'wrong');
-  assert.equal(feedbackFor('omission', 'errors'), 'wrong');
+  assert.equal(feedbackFor('omission', 'off'), null);
+  assert.equal(feedbackFor('commission', 'errors'), 'commission');
+  assert.equal(feedbackFor('omission', 'errors'), 'omission');
   assert.equal(feedbackFor('hit', 'errors'), null);
+  assert.equal(feedbackFor('withhold', 'errors'), null);
+  assert.equal(feedbackFor('hit', 'all'), 'correct');
   assert.equal(feedbackFor('withhold', 'all'), 'correct');
-  assert.equal(feedbackFor('omission', 'all'), 'wrong');
+  assert.equal(feedbackFor('omission', 'all'), 'omission');
 });
 
 test('estimateMinutes rounds the test length up', () => {

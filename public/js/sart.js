@@ -6,7 +6,7 @@ export const NON_TARGET_DIGITS = [1, 2, 4, 5, 6, 7, 8, 9];
 export const BLANK_MS = 200;
 export const START_DELAY_MS = 1000;
 export const ANTICIPATION_MS = 100;
-export const FEEDBACK_PAUSE_MS = 500;
+export const FEEDBACK_PAUSE_MS = 1000;
 export const FEEDBACK_MODES = ['off', 'errors', 'all'];
 
 export const SETTING_OPTIONS = {
@@ -75,12 +75,12 @@ export function scoreTrial(trial) {
   return { ...trial, outcome: outcomeOf(trial.isTarget, trial.responded) };
 }
 
-// Feedback text key for an outcome, or null when nothing is shown. Trial mode only (PLAN.md §9 D17).
+// Feedback key for an outcome, or null when nothing is shown. Trial mode only (PLAN.md §9 D17).
+// Errors keep their outcome ('commission' or 'omission') so the reason can be shown.
 export function feedbackFor(outcome, mode) {
   const correct = outcome === 'hit' || outcome === 'withhold';
-  if (mode === 'all') return correct ? 'correct' : 'wrong';
-  if (mode === 'errors') return correct ? null : 'wrong';
-  return null;
+  if (correct) return mode === 'all' ? 'correct' : null;
+  return mode === 'all' || mode === 'errors' ? outcome : null;
 }
 
 // Rounded up to whole minutes. Feedback pauses are not included.
