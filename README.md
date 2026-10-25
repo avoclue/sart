@@ -44,7 +44,31 @@ Wrangler reads `.env` only when there is no `.dev.vars` file, so do not create o
 
 ## Deploy
 
-1. `npx wrangler d1 create sart`, then put the printed `database_id` in your local `wrangler.toml`.
-2. `npm run db:migrate:remote`
-3. `npx wrangler secret put ADMIN_PASSWORD`
-4. `npm run deploy`
+Run these on your own computer, from the project folder. Everything stays on the free plan.
+
+1. **Log in:** `npx wrangler login` opens the browser to authorise Wrangler for your Cloudflare account.
+2. **Create the database:** `npx wrangler d1 create sart --location apac`. The location is a hint
+   to place the data in Asia Pacific. Copy the printed `database_id` into `wrangler.toml`, replacing
+   the zeros. Do not commit that change; `git update-index --skip-worktree wrangler.toml` hides it
+   from git (undo with `--no-skip-worktree`).
+3. **Create the tables:** `npm run db:migrate:remote`, and answer yes. Run it again whenever a new
+   file appears in `migrations/`.
+4. **Deploy:** `npm run deploy`. It prints the address, `https://sart.<your-subdomain>.workers.dev`.
+   On a new account Wrangler may first ask you to choose that subdomain.
+5. **Set the admin password:** `npx wrangler secret put ADMIN_PASSWORD`, then type the password.
+   It takes effect without another deploy. Until it is set, `/admin/` says the password is missing.
+6. **Check:** open the address, take one test, then open `/admin/` and confirm the session is there.
+
+### Later updates
+
+```sh
+git pull
+npm run db:migrate:remote   # only if migrations/ changed
+npm run deploy
+```
+
+### Backup
+
+```sh
+npx wrangler d1 export sart --remote --output backup.sql
+```
