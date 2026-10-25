@@ -1,6 +1,6 @@
 # SART — Implementation Plan
 
-Status: **building.** Engine, backend, participant UI and admin UI are done. Deployment is next. Decisions are in §3 and §9. Open items are in §8.
+Status: **built, not yet deployed.** Engine, backend, participant UI and admin UI are done. Remaining work is in §8. Decisions are in §3 and §9. Open items are in §8.
 
 ## 1. Goal
 
@@ -168,11 +168,26 @@ Aborted sessions are saved with `status = aborted`.
 
 ## 8. Open items
 
-- Design dials (ENERGY / RHYTHM / MOTION), final blue and yellow hex codes, study title and logo (`DESIGN.md`).
-- R8: whether to add the rest of a classic Robertson et al. (1997) preset (250 ms digit + 900 ms mask,
-  225 trials, about 11% targets) for comparison with published norms. Random font sizes are done (§9 D26).
-- Consent text (from the research team).
+### Content from the research team
+- Study title (replaces `[JUDUL STUDI]` in `public/index.html` and `public/admin/index.html`) and logo, if any.
+- Consent text (replaces `[TEKS PERSETUJUAN: ...]` in `public/index.html`).
+- Review of the drafted Indonesian participant text: form intro, instructions, feedback reasons, results labels.
+- Review of the admin glossary ("Penjelasan istilah"), especially the interpretive sentences.
+- Check the Robertson et al. (1997) font sizes (48, 72, 94, 100, 120 pt) against the paper.
 - Final identity fields (name + participant ID for now).
+
+### Before the study
+- Deploy (README "Deploy") and attach the custom subdomain.
+- Pilot with 3 to 5 people on the real devices and network, including one phone.
+- Give participants device instructions: laptop plugged in, other apps closed, an up-to-date browser, the test tab kept in front.
+- Decide on R8: whether to add the rest of a classic Robertson et al. (1997) preset (250 ms digit + 900 ms mask,
+  225 trials, about 11% targets) for comparison with published norms. Random font sizes are done (§9 D26).
+
+### Possible improvements (deferred on 2026-10-26)
+- Keep an unsaved result in browser storage and retry the save when the page is reopened.
+  Today a result is lost if the save fails and the tab is closed.
+- A load-test script to run against the real deployment before the study.
+- Record the actual on-screen duration of each digit, to spot devices whose timers lag.
 
 ## 9. Behaviour details (confirmed 2026-10-25)
 
