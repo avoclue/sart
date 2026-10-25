@@ -1,3 +1,7 @@
 node_modules/
 .wrangler/
+# Local secrets. Only the template is committed.
+.env
+.env.*
+!.env.example
 .dev.vars

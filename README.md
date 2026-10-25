@@ -34,11 +34,13 @@ password: any username works, and the password is `ADMIN_PASSWORD`. To log out, 
 
 ```sh
 npm install
-echo "ADMIN_PASSWORD=choose-a-local-password" > .dev.vars
+cp .env.example .env  # then set ADMIN_PASSWORD in .env
 npm run db:migrate:local
 npm run dev          # http://localhost:8787
 npm test
 ```
+
+Wrangler reads `.env` only when there is no `.dev.vars` file, so do not create one.
 
 ## Deploy
 
