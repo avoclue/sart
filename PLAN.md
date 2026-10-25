@@ -1,6 +1,6 @@
 # SART — Implementation Plan
 
-Status: **ready to build, except §9 defaults awaiting user confirmation.** Decisions are in §3 and remaining open items in §8.
+Status: **ready to build once the user says "start".** Decisions are in §3 and §9. Open items are in §8.
 
 ## 1. Goal
 
@@ -65,7 +65,7 @@ once at the end of that window. Metric definitions stay the same.
 | # | Topic | Decision |
 |---|---|---|
 | 1 | Backend | **Cloudflare Pages + Pages Functions + D1 (SQLite).** Everything is deployed on Cloudflare. A simple admin page with export is needed. |
-| 2 | Identity form | Name only for now. More fields are still being discussed. |
+| 2 | Identity form | **Name + participant ID**, both required. More fields are still being discussed. |
 | 3 | Purpose | **Research.** A consent checkbox is required before the test starts. The consent text will come from the research team; a placeholder is used until then. |
 | 4 | Settings | Same options and defaults as the reference (§2). |
 | 5 | Double-count bug | Fix it. |
@@ -74,7 +74,7 @@ once at the end of that window. Metric definitions stay the same.
 | 8 | Retry | Allowed. |
 | 9 | Language | UI in **Bahasa Indonesia**. Code and docs in English. |
 | 10 | Hosting | Cloudflare. |
-| R1–R7 | Research additions | All accepted (trial-level data, RT metrics, rates, anticipations, practice round, aborted sessions saved, data-quality checks). |
+| R1–R7 | Research additions | All accepted (trial-level data, RT metrics, rates, anticipations, practice, aborted sessions saved, data-quality checks). Practice is an **admin-controlled trial mode** (§9 D3), not a block before every test. |
 | R8 | Classic SART comparability | **Still under discussion.** Follow the reference for now. |
 | — | Dashboard | **Admin only.** Covers RT and other metrics; scope in §6. Participants see only the four reference metrics. |
 | 11 | Scale and devices | About 30 participants, desktop first. Mobile must still work. |
@@ -106,10 +106,12 @@ adds a second provider and requires writing Row Level Security policies.
 
 ## 5. Data model (D1)
 
-- `settings`: a single row with `display_duration_ms`, `total_trials`, `target_frequency`
+- `settings`: a single row with `display_duration_ms`, `total_trials`, `target_frequency`,
+  `trial_mode` (0/1)
 - `sessions`: one row per test attempt
-  - `id`, `created_at` (UTC), `participant_name`, `attempt_no`, `status`
-    (completed/aborted)
+  - `id`, `created_at` (UTC), `participant_id` (normalised: trimmed, lowercase),
+    `participant_id_raw`, `participant_name`, `attempt_no`, `is_trial` (0/1),
+    `status` (completed/aborted), `consent_at` (UTC)
   - settings used, plus the summary metrics (§6)
   - device info: user agent, screen size, input type (keyboard/touch),
     `tab_hidden_count`
@@ -129,13 +131,14 @@ These are stored for researchers only and shown on the admin dashboard:
 - omission rate (omissions ÷ non-3 trials)
 - anticipation count (presses faster than 100 ms)
 
-Practice round: about 18 trials before the scored test. These are not scored and not saved.
+Trial-mode sessions are saved with `is_trial = 1` (see §9 D3).
 Aborted sessions are saved with `status = aborted`.
 
 ### Admin dashboard (admin only)
 
 - A per-session table with every metric. It is sortable and can be filtered by name and status.
-- Summary cards: number of participants, number of sessions, and the mean of each metric
+- Trial-mode sessions are hidden by default, with a filter to show them.
+- Summary cards: number of participants (distinct participant IDs), number of sessions, and the mean of each metric
   over completed sessions.
 - A few simple charts: a distribution of accuracy and RT variability across participants,
   and an RT-by-trial plot for one session (this shows attention drifting).
@@ -148,12 +151,13 @@ Aborted sessions are saved with `status = aborted`.
    `wrangler.toml`, `README.md`.
 2. SART engine as pure functions: sequence generation, trial state machine,
    scoring (every trial scored once), RT metrics. Unit tests with `node --test`.
-3. Participant UI (Indonesian): name form plus consent checkbox, instructions,
-   practice round, test, results, retry.
+3. Participant UI (Indonesian): name + participant ID form, consent checkbox,
+   instructions, test (with a "Sesi Latihan" label and per-trial feedback when trial mode is on), results, retry.
    Keyboard and touch input, ignoring held-key auto-repeat.
 4. API: `GET /api/settings`, `POST /api/results` (validate, then insert the session and its trials in one batch).
-5. Admin: login, settings form, dashboard (§6), and two CSV exports
-   (sessions summary and trial-level data).
+5. Admin: login, settings form (including the trial-mode switch), dashboard (§6),
+   and two CSV exports (sessions summary and trial-level data; trial-mode sessions
+   excluded unless the admin includes them).
 6. Local development: `wrangler pages dev` with a local D1 database (SQLite file
    under `.wrangler/`, git-ignored). Schema changes go through `wrangler d1 migrations`.
 7. Deploy guide: create the remote D1 database, apply migrations with `--remote`, set
@@ -166,24 +170,21 @@ Aborted sessions are saved with `status = aborted`.
 - R8: whether to add a classic Robertson et al. (1997) preset (250 ms digit + 900 ms mask,
   225 trials, about 11% targets, random font sizes) for comparison with published norms.
 - Consent text (from the research team).
-- Final identity fields (name only for now).
+- Final identity fields (name + participant ID for now).
 
-## 9. Behaviour details (proposed defaults, awaiting confirmation)
+## 9. Behaviour details (confirmed 2026-10-25)
 
-These details were not settled during planning. A builder must not guess them.
-Use these defaults once the user confirms them.
-
-| # | Topic | Proposed default |
+| # | Topic | Decision |
 |---|---|---|
 | D1 | Reaction time | Measured from digit onset (`performance.now()`). Only the first press in a trial's response window counts; later presses only increase `extra_presses`. |
 | D2 | Anticipations (< 100 ms) | Still scored as normal presses, so the four reference metrics are unchanged. They are counted separately and excluded from the RT metrics. |
-| D3 | Practice round | 18 trials using the admin's display duration, with 3 targets. Shows "Benar"/"Salah" feedback after each trial. Not saved. Only before the first attempt; retries skip it. |
-| D4 | Attempt number | Counted on the server: the number of earlier sessions with the same name (trimmed, case-insensitive) + 1. |
+| D3 | Trial mode | A switch in the admin settings. **On:** every test a participant takes is a practice session. It uses the same settings (duration, length, frequency) as the real test, shows a "Sesi Latihan" label, and gives "Benar"/"Salah" feedback after every trial. It is saved with `is_trial = 1`, and is hidden from the dashboard and CSVs by default (a filter shows it). **Off:** every test is the real test, with no feedback. The study runs a trial period first and then the real period. |
+| D4 | Participant ID and attempt number | The form requires a **name** and a **participant ID**. The ID is free text with no validation against a list; it is matched trimmed and case-insensitive. The attempt number is counted on the server: the number of earlier sessions with the same ID and the same `is_trial` value, plus 1. The name is shown for display only. |
 | D5 | End Test early | Confirm dialog, then save the session as `aborted` along with the trials completed so far. The participant returns to the start screen. |
-| D6 | Tab switch during the test | The test keeps running and `tab_hidden_count` is recorded. The admin dashboard flags sessions where the count is above 0. |
+| D6 | Tab switch during the test | The test keeps running and `tab_hidden_count` is recorded. The dashboard flags sessions where the count is above 0. |
 | D7 | Consent | The test cannot start until the checkbox is ticked. `consent_at` is stored with the session. The consent text is a placeholder for now. |
 | D8 | Admin login | Password only (Basic Auth, any username). The password comes from the `ADMIN_PASSWORD` secret. |
 | D9 | Times in the admin UI and CSV | Stored in UTC. Shown in WIB (Asia/Jakarta). |
-| D10 | Deleting data | The admin can delete a session and its trials, for test runs or a participant withdrawing. Deletion is permanent and needs a confirmation step. |
+| D10 | Deleting data | **Not included for now.** |
 | D11 | Fullscreen | Not forced. |
-| D12 | Dashboard "participants" | Count of distinct names (same normalisation as D4). |
+| D12 | Dashboard "participants" | Count of distinct participant IDs (normalised as in D4). |
