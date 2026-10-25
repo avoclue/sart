@@ -218,29 +218,27 @@ kbd {
 .test-area:focus { outline: none; }
 .stimulus {
   margin: 0;
-  font-size: clamp(6rem, 28vw, 11rem);
+  /* --digit-scale is set per trial when random font size is on (PLAN.md §9 D26). */
+  font-size: calc(clamp(6rem, 28vw, 11rem) * var(--digit-scale, 1));
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  min-height: 1em;
 }
 .stimulus.feedback { font-size: clamp(2.5rem, 12vw, 4.5rem); }
 .stimulus.feedback-wrong { color: var(--error); }
 .stimulus.feedback-correct { color: var(--blue); }
-/* Positioned below the digit so showing a reason never moves the digit off centre. */
-.stimulus-box { position: relative; text-align: center; }
+/* The digit, or the feedback title plus its reason, is centred as one block.
+   The reason is removed while empty, so it never pushes a digit off centre. */
+.stimulus-box { text-align: center; }
 .stimulus-reason {
-  position: absolute;
-  top: calc(100% + var(--space-2));
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(30rem, calc(100vw - 2rem));
+  max-width: min(30rem, calc(100vw - 2rem));
   text-wrap: balance;
-  margin: 0;
+  margin: var(--space-2) auto 0;
   font-size: clamp(1.15rem, 4.5vw, 1.4rem);
   font-weight: 700;
   color: var(--ink);
 }
+.stimulus-reason:empty { display: none; }
 
 /* Results */
 .accuracy { margin-bottom: var(--space-4); }

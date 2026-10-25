@@ -3,8 +3,8 @@ import { validateResult, validateAdminSettings, ValidationError } from './valida
 import { toCsv, SESSION_COLUMNS, TRIAL_COLUMNS } from './csv.js';
 
 const MAX_BODY_BYTES = 100_000;
-// D1 allows at most 100 bound parameters per query; a trial row has 8.
-const TRIALS_PER_INSERT = 12;
+// D1 allows at most 100 bound parameters per query; a trial row has 9.
+const TRIALS_PER_INSERT = 11;
 
 function json(data, status = 200) {
   return Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -67,6 +67,7 @@ async function getSettings(env) {
     targetFrequency: row.target_frequency,
     trialMode: row.trial_mode === 1,
     feedbackMode: row.feedback_mode,
+    randomFontSize: row.random_font_size === 1,
   };
 }
 
@@ -74,10 +75,10 @@ async function putSettings(request, env) {
   const s = validateAdminSettings(await readJson(request));
   await env.DB.prepare(
     `UPDATE settings SET display_duration_ms = ?, total_trials = ?, target_frequency = ?,
-       trial_mode = ?, feedback_mode = ?, updated_at = ? WHERE id = 1`,
+       trial_mode = ?, feedback_mode = ?, random_font_size = ?, updated_at = ? WHERE id = 1`,
   ).bind(
     s.displayDurationMs, s.totalTrials, s.targetFrequency, s.trialMode ? 1 : 0, s.feedbackMode,
-    new Date().toISOString(),
+    s.randomFontSize ? 1 : 0, new Date().toISOString(),
   ).run();
   return json(await getSettings(env));
 }
@@ -100,8 +101,8 @@ async function postResult(request, env) {
        status, consent_at, display_duration_ms, total_trials, target_frequency, trials_completed,
        correct_hits, commission_errors, omission_errors, correct_withholds, accuracy, mean_rt_ms,
        sd_rt_ms, rt_cv, commission_rate, omission_rate, anticipation_count, user_agent,
-       screen_width, screen_height, input_type, tab_hidden_count, feedback_mode)
-     SELECT ?, ?, ?, ?, ?, COUNT(*) + 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+       screen_width, screen_height, input_type, tab_hidden_count, feedback_mode, random_font_size)
+     SELECT ?, ?, ?, ?, ?, COUNT(*) + 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
      FROM sessions WHERE participant_id = ? AND is_trial = ?`,
   ).bind(
     id, new Date().toISOString(), r.participantId, r.participantIdRaw, r.participantName, isTrial,
@@ -110,17 +111,19 @@ async function postResult(request, env) {
     summary.commissionErrors, summary.omissionErrors, summary.correctWithholds, summary.accuracy,
     summary.meanRtMs, summary.sdRtMs, summary.rtCv, summary.commissionRate, summary.omissionRate,
     summary.anticipationCount, request.headers.get('User-Agent')?.slice(0, 500) ?? null,
-    r.screenWidth, r.screenHeight, r.inputType, r.tabHiddenCount, feedbackMode, r.participantId, isTrial,
+    r.screenWidth, r.screenHeight, r.inputType, r.tabHiddenCount, feedbackMode,
+    r.settings.randomFontSize ? 1 : 0, r.participantId, isTrial,
   );
 
   const statements = [insertSession];
   for (let i = 0; i < r.trials.length; i += TRIALS_PER_INSERT) {
     const chunk = r.trials.slice(i, i + TRIALS_PER_INSERT);
     statements.push(env.DB.prepare(
-      `INSERT INTO trials (session_id, trial_no, digit, is_target, responded, rt_ms, outcome, extra_presses)
-       VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ')}`,
+      `INSERT INTO trials (session_id, trial_no, digit, is_target, responded, rt_ms, outcome, extra_presses, font_size_pt)
+       VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')}`,
     ).bind(...chunk.flatMap((t) => [
       id, t.trialNo, t.digit, t.isTarget ? 1 : 0, t.responded ? 1 : 0, t.rtMs, t.outcome, t.extraPresses,
+      t.fontSizePt,
     ])));
   }
   await env.DB.batch(statements);
@@ -142,7 +145,7 @@ async function listSessions(url, env) {
 
 async function listTrials(url, env) {
   const { results } = await env.DB.prepare(
-    `SELECT t.*, s.participant_id, s.attempt_no, s.is_trial, s.status, s.feedback_mode
+    `SELECT t.*, s.participant_id, s.attempt_no, s.is_trial, s.status, s.feedback_mode, s.random_font_size
      FROM trials t JOIN sessions s ON s.id = t.session_id ${trialFilter(url, 's.')}
      ORDER BY s.created_at, t.trial_no`,
   ).all();

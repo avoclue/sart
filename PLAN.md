@@ -169,8 +169,8 @@ Aborted sessions are saved with `status = aborted`.
 ## 8. Open items
 
 - Design dials (ENERGY / RHYTHM / MOTION), final blue and yellow hex codes, study title and logo (`DESIGN.md`).
-- R8: whether to add a classic Robertson et al. (1997) preset (250 ms digit + 900 ms mask,
-  225 trials, about 11% targets, random font sizes) for comparison with published norms.
+- R8: whether to add the rest of a classic Robertson et al. (1997) preset (250 ms digit + 900 ms mask,
+  225 trials, about 11% targets) for comparison with published norms. Random font sizes are done (§9 D26).
 - Consent text (from the research team).
 - Final identity fields (name + participant ID for now).
 
@@ -203,3 +203,4 @@ Aborted sessions are saved with `status = aborted`.
 | D23 | Dashboard basis | Each participant is represented by their **latest completed real session**: practice and aborted sessions are left out, and a retry replaces the earlier attempt. The summary means (with n per metric) and both charts use this set. The participant and session counts cover all real sessions. |
 | D24 | Dashboard charts | Accuracy and RT variability (CV) are dot strips with one dot per participant, because with about 30 people a histogram hides individuals and has a noisy shape. Clicking "Lihat RT" on a session row shows its RT for each trial, with hits and presses on a 3 drawn in different shapes. |
 | D25 | Admin page | Text in Bahasa Indonesia. Chart.js 4.4.1 comes from cdnjs, pinned with a Subresource Integrity hash. If it fails to load, the page says so and the tables still work. Settings save directly with no confirm step. Settings are not changed mid-study. Logging out means closing the browser (Basic Auth), and the page says so. The text filter matches name or participant ID. |
+| D26 | Random font size | An admin on/off setting (default off) for both practice and real sessions. When on, each trial shows its digit in one of the five Robertson et al. (1997) sizes, 48, 72, 94, 100 or 120 pt, drawn with equal chance. Screens have no fixed pt size, so 120 pt is the normal digit size and the rest are scaled by size / 120 (40%, 60%, 78%, 83% and 100%). The size is drawn before the test, so a replayed trial (D19) keeps it. It is saved per trial (`font_size_pt`, empty when off), and the setting is saved per session (`random_font_size`). This is the only part of R8 adopted so far. |

@@ -1,7 +1,7 @@
 // Participant app: screens, input and timing. All scoring lives in sart.js.
 
 import {
-  START_DELAY_MS, FEEDBACK_PAUSE_MS, generateSequence, responseWindowMs, createTrial,
+  START_DELAY_MS, FEEDBACK_PAUSE_MS, generateSequence, generateFontSizes, fontScale, responseWindowMs, createTrial,
   registerPress, outcomeOf, scoreTrial, summarize, feedbackFor, estimateMinutes, combineInputTypes,
 } from './sart.js';
 import { API_BASE } from './config.js';
@@ -89,9 +89,10 @@ $('start-test').addEventListener('click', startTest);
 
 // Test runner
 
-function setStimulus(text) {
+function setStimulus(text, scale = 1) {
   $('stimulus').textContent = text;
   $('stimulus').className = 'stimulus';
+  $('stimulus').style.setProperty('--digit-scale', scale);
   $('stimulus-reason').textContent = '';
 }
 
@@ -99,6 +100,7 @@ function showFeedback(key) {
   const { title, reason, kind } = FEEDBACK[key];
   $('stimulus').textContent = title;
   $('stimulus').className = `stimulus feedback feedback-${kind}`;
+  $('stimulus').style.setProperty('--digit-scale', 1);
   $('stimulus-reason').textContent = reason;
 }
 
@@ -117,6 +119,8 @@ function startTest() {
     settings: { ...settings },
     feedbackMode: practice ? settings.feedbackMode : 'off',
     sequence: generateSequence(settings.totalTrials, settings.targetFrequency),
+    // Drawn up front so a replayed trial (PLAN.md §9 D19) keeps its size.
+    fontSizes: settings.randomFontSize ? generateFontSizes(settings.totalTrials) : null,
     trials: [],
     index: 0,
     current: null,
@@ -140,7 +144,9 @@ function beginTrial() {
     return;
   }
   run.current = createTrial(run.index + 1, run.sequence[run.index]);
-  setStimulus(String(run.current.digit));
+  const fontSizePt = run.fontSizes ? run.fontSizes[run.index] : null;
+  run.current.fontSizePt = fontSizePt;
+  setStimulus(String(run.current.digit), fontSizePt ? fontScale(fontSizePt) : 1);
   run.onset = performance.now();
   run.accepting = true;
   const { displayDurationMs } = run.settings;
@@ -250,6 +256,7 @@ function finishTest(status) {
         displayDurationMs: run.settings.displayDurationMs,
         totalTrials: run.settings.totalTrials,
         targetFrequency: run.settings.targetFrequency,
+        randomFontSize: run.settings.randomFontSize,
       },
       device: {
         screenWidth: window.screen.width,
@@ -257,8 +264,8 @@ function finishTest(status) {
         inputType: combineInputTypes(run.inputTypes),
       },
       tabHiddenCount: run.tabHiddenCount,
-      trials: run.trials.map(({ trialNo, digit, responded, rtMs, extraPresses }) => ({
-        trialNo, digit, responded, rtMs, extraPresses,
+      trials: run.trials.map(({ trialNo, digit, responded, rtMs, extraPresses, fontSizePt }) => ({
+        trialNo, digit, responded, rtMs, extraPresses, fontSizePt,
       })),
     },
     summary: summarize(run.trials),

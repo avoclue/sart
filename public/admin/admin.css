@@ -138,3 +138,5 @@ figcaption { font-weight: 700; margin-bottom: var(--space-1); }
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+#settings-form .check { margin-bottom: var(--space-2); }

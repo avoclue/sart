@@ -47,10 +47,11 @@ const settingFields = {
   targetFrequency: { el: () => $('set-frequency'), parse: Number },
   feedbackMode: { el: () => $('set-feedback'), parse: String },
 };
+const settingChecks = { trialMode: 'set-trial-mode', randomFontSize: 'set-random-font' };
 
 function fillSettings(s) {
   for (const [key, field] of Object.entries(settingFields)) field.el().value = String(s[key]);
-  $('set-trial-mode').checked = s.trialMode;
+  for (const [key, id] of Object.entries(settingChecks)) $(id).checked = s[key];
 }
 
 async function loadSettings() {
@@ -70,7 +71,8 @@ async function loadSettings() {
 
 $('settings-form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const body = { trialMode: $('set-trial-mode').checked };
+  const body = {};
+  for (const [key, id] of Object.entries(settingChecks)) body[key] = $(id).checked;
   for (const [key, field] of Object.entries(settingFields)) body[key] = field.parse(field.el().value);
   const saved = $('settings-saved');
   saved.className = 'status';
@@ -121,7 +123,7 @@ function stripChart(name, canvas, rows, valueKey, format, axis) {
     .map((s, i) => ({ x: s[valueKey], y: ((i * 7) % 11) / 10 - 0.5, id: s.participant_id_raw }));
   replaceChart(name, canvas, {
     type: 'scatter',
-    data: { datasets: [{ data: points, backgroundColor: BLUE, pointRadius: 6, pointHoverRadius: 8 }] },
+    data: { datasets: [{ data: points, backgroundColor: BLUE, pointRadius: 6, pointHoverRadius: 8, clip: false }] },
     options: {
       maintainAspectRatio: false,
       animation: false,
@@ -283,7 +285,8 @@ async function openDetail(s) {
   $('detail-title').textContent = `Detail sesi ${s.participant_id_raw}, percobaan ke-${s.attempt_no}`;
   $('detail-summary').textContent = `${s.participant_name}. ${s.is_trial ? 'Latihan' : 'Utama'}, `
     + `${s.status === 'completed' ? 'selesai' : 'dihentikan'}. Pengaturan: ${s.display_duration_ms} ms, `
-    + `${s.total_trials} angka, ${Math.round(s.target_frequency * 100)}% angka 3.`;
+    + `${s.total_trials} angka, ${Math.round(s.target_frequency * 100)}% angka 3, `
+    + `ukuran angka ${s.random_font_size ? 'acak' : 'tetap'}.`;
   $('detail-status').className = 'status';
   $('detail-status').textContent = 'Memuat data per angka...';
   $('detail-status').hidden = false;
@@ -314,13 +317,15 @@ async function openDetail(s) {
     type: 'scatter',
     data: {
       datasets: [
-        { label: 'Hit (angka selain 3)', data: points('hit'), backgroundColor: BLUE, pointStyle: 'circle', pointRadius: 4 },
-        { label: 'Komisi (menekan 3)', data: points('commission'), backgroundColor: RED, pointStyle: 'triangle', pointRadius: 6 },
+        { label: 'Hit (angka selain 3)', data: points('hit'), backgroundColor: BLUE, pointStyle: 'circle', pointRadius: 4, clip: false },
+        { label: 'Komisi (menekan 3)', data: points('commission'), backgroundColor: RED, pointStyle: 'triangle', pointRadius: 6, clip: false },
       ],
     },
     options: {
       maintainAspectRatio: false,
       animation: false,
+      // Points on the first and last trial sit on the axis ends; leave room so they are not cut.
+      layout: { padding: { left: 8, right: 12, top: 8 } },
       plugins: { legend: { labels: { color: '#1d2433', usePointStyle: true } } },
       scales: {
         x: { min: 1, max: s.total_trials, title: { display: true, text: 'Angka ke-', color: '#1d2433' }, ticks: { color: '#1d2433' } },

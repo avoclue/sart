@@ -1,7 +1,7 @@
 // Validation of request bodies. Pure functions, so they can be unit-tested with node --test.
 
 import {
-  SETTING_OPTIONS, FEEDBACK_MODES, BLANK_MS, targetCount, createTrial, registerPress, scoreTrial,
+  SETTING_OPTIONS, FEEDBACK_MODES, FONT_SIZES_PT, BLANK_MS, targetCount, createTrial, registerPress, scoreTrial,
 } from '../public/js/sart.js';
 
 export const INPUT_TYPES = ['keyboard', 'touch', 'mixed', 'none'];
@@ -41,7 +41,8 @@ export function validateSettings(body) {
   if (!SETTING_OPTIONS.displayDurationMs.includes(displayDurationMs)) fail('invalid displayDurationMs');
   if (!SETTING_OPTIONS.totalTrials.includes(totalTrials)) fail('invalid totalTrials');
   if (!SETTING_OPTIONS.targetFrequency.includes(targetFrequency)) fail('invalid targetFrequency');
-  return { displayDurationMs, totalTrials, targetFrequency };
+  if (typeof body.randomFontSize !== 'boolean') fail('randomFontSize must be a boolean');
+  return { displayDurationMs, totalTrials, targetFrequency, randomFontSize: body.randomFontSize };
 }
 
 export function validateAdminSettings(body) {
@@ -77,7 +78,11 @@ function validateTrials(rawTrials, settings, status) {
     } else if (raw.rtMs !== null || raw.extraPresses !== 0) {
       fail(`trial ${i + 1} has presses but responded is false`);
     }
-    return scoreTrial(trial);
+    const fontSizePt = raw.fontSizePt ?? null;
+    if (settings.randomFontSize ? !FONT_SIZES_PT.includes(fontSizePt) : fontSizePt !== null) {
+      fail(`trial ${i + 1} has an invalid fontSizePt`);
+    }
+    return { ...scoreTrial(trial), fontSizePt };
   });
 
   const targets = trials.filter((t) => t.isTarget).length;

@@ -18,7 +18,7 @@ function body(overrides = {}) {
     participantId: ' P01 ',
     status: 'completed',
     consentAt: '2026-10-25T10:00:00.000Z',
-    settings: { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1 },
+    settings: { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false },
     device: { screenWidth: 1280, screenHeight: 800, inputType: 'keyboard' },
     tabHiddenCount: 0,
     trials: trialsFor(digits),
@@ -48,7 +48,7 @@ test('rejects missing name or ID', () => {
 });
 
 test('rejects settings outside the allowed options', () => {
-  const settings = { displayDurationMs: 300, totalTrials: 50, targetFrequency: 0.1 };
+  const settings = { displayDurationMs: 300, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false };
   assert.throws(() => validateResult(body({ settings })), ValidationError);
 });
 
@@ -69,6 +69,17 @@ test('rejects RTs outside the response window and inconsistent presses', () => {
   assert.throws(() => validateResult(body({ trials })), ValidationError);
 });
 
+test('font sizes must match the randomFontSize setting', () => {
+  const on = { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: true };
+  const sized = trialsFor(digits).map((t, i) => ({ ...t, fontSizePt: [48, 72, 94, 100, 120][i % 5] }));
+  assert.equal(validateResult(body({ settings: on, trials: sized })).trials[1].fontSizePt, 72);
+  assert.throws(() => validateResult(body({ settings: on })), ValidationError);
+  assert.throws(() => validateResult(body({ trials: sized })), ValidationError);
+  const odd = sized.map((t) => ({ ...t, fontSizePt: 60 }));
+  assert.throws(() => validateResult(body({ settings: on, trials: odd })), ValidationError);
+  assert.equal(validateResult(body()).trials[0].fontSizePt, null);
+});
+
 test('rejects out-of-order trial numbers', () => {
   const trials = trialsFor(digits);
   trials[1].trialNo = 5;
@@ -76,7 +87,7 @@ test('rejects out-of-order trial numbers', () => {
 });
 
 test('admin settings need a boolean trialMode and a known feedbackMode', () => {
-  const s = { displayDurationMs: 250, totalTrials: 200, targetFrequency: 0.3 };
+  const s = { displayDurationMs: 250, totalTrials: 200, targetFrequency: 0.3, randomFontSize: true };
   const full = { ...s, trialMode: true, feedbackMode: 'errors' };
   assert.deepEqual(validateAdminSettings(full), full);
   assert.throws(() => validateAdminSettings({ ...full, trialMode: 1 }), ValidationError);

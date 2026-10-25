@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   TARGET_DIGIT, targetCount, generateSequence, responseWindowMs,
   createTrial, registerPress, scoreTrial, summarize,
-  feedbackFor, estimateMinutes, combineInputTypes,
+  feedbackFor, estimateMinutes, combineInputTypes, FONT_SIZES_PT, generateFontSizes, fontScale,
 } from '../public/js/sart.js';
 
 function seededRandom(seed) {
@@ -142,4 +142,16 @@ test('combineInputTypes reports none, a single type or mixed', () => {
   assert.equal(combineInputTypes([]), 'none');
   assert.equal(combineInputTypes(['keyboard', 'keyboard']), 'keyboard');
   assert.equal(combineInputTypes(['keyboard', 'touch']), 'mixed');
+});
+
+test('generateFontSizes draws only Robertson sizes, and all of them over many trials', () => {
+  const sizes = generateFontSizes(200, seededRandom(3));
+  assert.equal(sizes.length, 200);
+  assert.ok(sizes.every((s) => FONT_SIZES_PT.includes(s)));
+  assert.deepEqual([...new Set(sizes)].sort((a, b) => a - b), FONT_SIZES_PT);
+});
+
+test('fontScale is relative to the largest size', () => {
+  assert.equal(fontScale(120), 1);
+  assert.equal(fontScale(48), 0.4);
 });

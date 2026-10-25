@@ -8,6 +8,9 @@ export const START_DELAY_MS = 1000;
 export const ANTICIPATION_MS = 100;
 export const FEEDBACK_PAUSE_MS = 1000;
 export const FEEDBACK_MODES = ['off', 'errors', 'all'];
+// Robertson et al. (1997) font sizes in pt. On screen, 120 pt is the normal digit size
+// and the others are scaled by size / 120 (PLAN.md §9 D26).
+export const FONT_SIZES_PT = [48, 72, 94, 100, 120];
 
 export const SETTING_OPTIONS = {
   displayDurationMs: [250, 500, 750],
@@ -21,6 +24,7 @@ export const DEFAULT_SETTINGS = {
   targetFrequency: 0.2,
   trialMode: false,
   feedbackMode: 'off',
+  randomFontSize: false,
 };
 
 export function targetCount(totalTrials, targetFrequency) {
@@ -41,6 +45,15 @@ export function generateSequence(totalTrials, targetFrequency, random = Math.ran
     [digits[i], digits[j]] = [digits[j], digits[i]];
   }
   return digits;
+}
+
+// One font size per trial, each drawn with equal chance.
+export function generateFontSizes(totalTrials, random = Math.random) {
+  return Array.from({ length: totalTrials }, () => FONT_SIZES_PT[Math.floor(random() * FONT_SIZES_PT.length)]);
+}
+
+export function fontScale(fontSizePt) {
+  return fontSizePt / FONT_SIZES_PT[FONT_SIZES_PT.length - 1];
 }
 
 // The response window is the digit display plus the blank after it (PLAN.md §2).
