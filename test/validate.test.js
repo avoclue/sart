@@ -75,10 +75,12 @@ test('rejects out-of-order trial numbers', () => {
   assert.throws(() => validateResult(body({ trials })), ValidationError);
 });
 
-test('admin settings need a boolean trialMode', () => {
+test('admin settings need a boolean trialMode and a known feedbackMode', () => {
   const s = { displayDurationMs: 250, totalTrials: 200, targetFrequency: 0.3 };
-  assert.deepEqual(validateAdminSettings({ ...s, trialMode: true }), { ...s, trialMode: true });
-  assert.throws(() => validateAdminSettings({ ...s, trialMode: 1 }), ValidationError);
+  const full = { ...s, trialMode: true, feedbackMode: 'errors' };
+  assert.deepEqual(validateAdminSettings(full), full);
+  assert.throws(() => validateAdminSettings({ ...full, trialMode: 1 }), ValidationError);
+  assert.throws(() => validateAdminSettings({ ...full, feedbackMode: 'some' }), ValidationError);
 });
 
 test('toWib converts UTC to Asia/Jakarta time', () => {

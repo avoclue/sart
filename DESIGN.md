@@ -12,11 +12,17 @@ owner's answers on 2026-10-25. Only the owner adds direction here.
 
 Warm and friendly.
 
+## Dials
+
+ENERGY 2 / RHYTHM 1 / MOTION 1. Welcoming start and results screens, a few simple
+consistent screens, hover states only, and no animation during the test.
+
 ## Palette
 
-- Primary: **blue**. Accent: **yellow**.
-- Hex codes are not decided yet. Keep each colour in a single CSS custom property
-  marked as a placeholder, so swapping in the final values is a one-line change.
+- Primary blue: `#093697`. Accent yellow: `#f6d106`.
+- Yellow on white or the page background is 1.5:1, so it fails WCAG for text and for
+  controls. It is only used as a fill behind dark ink (`#1d2433` on yellow is 10.4:1).
+- Blue is used for headings, buttons and the focus ring (10.6:1 on white).
 
 ## Typography
 
@@ -28,6 +34,4 @@ Light only. No dark mode and no theme toggle.
 
 ## Open
 
-- Final hex codes for blue and yellow.
 - Study title and logo.
-- Dials (ENERGY / RHYTHM / MOTION): to be agreed before UI work starts.

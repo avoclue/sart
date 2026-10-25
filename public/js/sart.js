@@ -6,6 +6,8 @@ export const NON_TARGET_DIGITS = [1, 2, 4, 5, 6, 7, 8, 9];
 export const BLANK_MS = 200;
 export const START_DELAY_MS = 1000;
 export const ANTICIPATION_MS = 100;
+export const FEEDBACK_PAUSE_MS = 500;
+export const FEEDBACK_MODES = ['off', 'errors', 'all'];
 
 export const SETTING_OPTIONS = {
   displayDurationMs: [250, 500, 750],
@@ -18,6 +20,7 @@ export const DEFAULT_SETTINGS = {
   totalTrials: 100,
   targetFrequency: 0.2,
   trialMode: false,
+  feedbackMode: 'off',
 };
 
 export function targetCount(totalTrials, targetFrequency) {
@@ -70,6 +73,27 @@ export function outcomeOf(isTarget, responded) {
 // Called once, when the trial's response window closes.
 export function scoreTrial(trial) {
   return { ...trial, outcome: outcomeOf(trial.isTarget, trial.responded) };
+}
+
+// Feedback text key for an outcome, or null when nothing is shown. Trial mode only (PLAN.md §9 D17).
+export function feedbackFor(outcome, mode) {
+  const correct = outcome === 'hit' || outcome === 'withhold';
+  if (mode === 'all') return correct ? 'correct' : 'wrong';
+  if (mode === 'errors') return correct ? null : 'wrong';
+  return null;
+}
+
+// Rounded up to whole minutes. Feedback pauses are not included.
+export function estimateMinutes({ displayDurationMs, totalTrials }) {
+  return Math.ceil((START_DELAY_MS + totalTrials * responseWindowMs(displayDurationMs)) / 60000);
+}
+
+// Combines the input types of all presses in a session into one value.
+export function combineInputTypes(types) {
+  const set = new Set(types);
+  if (set.size === 0) return 'none';
+  if (set.size > 1) return 'mixed';
+  return [...set][0];
 }
 
 export function isAnticipation(trial) {

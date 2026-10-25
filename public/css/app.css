@@ -1,0 +1,213 @@
+/* Institution colours from DESIGN.md. Yellow fails contrast on light backgrounds
+   (1.5:1), so it is only ever a fill behind dark ink, never text or a border. */
+:root {
+  --blue: #093697;
+  --yellow: #f6d106;
+  --ink: #1d2433;
+  --ink-soft: #4a5162;
+  --paper: #fbf8f1;
+  --surface: #ffffff;
+  --edge: #8a8f9c;
+  --error: #a3261b;
+
+  --radius-control: 6px;
+  --radius-panel: 12px;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2.5rem;
+
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Atkinson Hyperlegible', system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+main {
+  width: 100%;
+  max-width: 38rem;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-2);
+}
+
+[hidden] { display: none !important; }
+
+h1, h2 { line-height: 1.2; margin: 0 0 var(--space-2); }
+h1 { font-size: clamp(1.6rem, 5vw, 2.1rem); color: var(--blue); }
+h2 { font-size: 1.2rem; }
+p { margin: 0 0 var(--space-2); }
+
+.panel {
+  background: var(--surface);
+  border-radius: var(--radius-panel);
+  padding: var(--space-4) clamp(var(--space-2), 5vw, var(--space-4));
+}
+
+.lead { color: var(--ink-soft); font-size: 1.125rem; margin-bottom: var(--space-4); }
+
+/* Form */
+.field { margin-bottom: var(--space-3); }
+label { display: block; font-weight: 700; margin-bottom: 0.35rem; }
+
+input[type="text"] {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.6rem 0.75rem;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1.5px solid var(--edge);
+  border-radius: var(--radius-control);
+}
+input[aria-invalid="true"] { border-color: var(--error); border-width: 2px; }
+
+.field-error { color: var(--error); font-weight: 700; margin: 0.35rem 0 0; }
+.field-error::before { content: "! "; }
+
+.consent {
+  border-top: 1px solid var(--edge);
+  padding-top: var(--space-3);
+  margin: var(--space-4) 0 var(--space-3);
+}
+.placeholder { color: var(--ink-soft); font-style: italic; }
+
+.check { display: flex; gap: 0.75rem; align-items: flex-start; font-weight: 400; cursor: pointer; }
+.check input { width: 24px; height: 24px; margin: 0.1rem 0 0; flex: none; accent-color: var(--blue); }
+
+/* Buttons */
+button {
+  font: inherit;
+  font-weight: 700;
+  min-height: 48px;
+  padding: 0.6rem 1.4rem;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+.btn-primary { background: var(--blue); color: #fff; border: 2px solid var(--blue); }
+.btn-secondary { background: var(--surface); color: var(--blue); border: 2px solid var(--blue); }
+/* Hover only on devices that really hover, so a tap does not leave a button stuck dark. */
+@media (hover: hover) {
+  .btn-primary:hover { background: var(--ink); border-color: var(--ink); }
+  .btn-secondary:hover { background: var(--paper); }
+}
+
+/* Blue ring, because yellow on white would be invisible (1.5:1). */
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+
+/* Instructions */
+.steps { padding-left: 1.4rem; margin: 0 0 var(--space-3); }
+.steps li { margin-bottom: var(--space-1); padding-left: 0.25rem; }
+.steps li::marker { color: var(--blue); font-weight: 700; }
+
+/* The one highlighter mark: the rule participants must not miss. */
+mark { background: var(--yellow); color: var(--ink); padding: 0 0.2em; border-radius: 3px; font-weight: 700; }
+
+kbd {
+  font: inherit;
+  font-weight: 700;
+  padding: 0.05rem 0.45rem;
+  border: 1.5px solid var(--edge);
+  border-bottom-width: 3px;
+  border-radius: 5px;
+  background: var(--surface);
+}
+
+.practice-tag {
+  display: inline-block;
+  background: var(--yellow);
+  color: var(--ink);
+  font-weight: 700;
+  padding: 0.2rem 0.7rem;
+  border-radius: var(--radius-control);
+  margin-bottom: var(--space-2);
+}
+
+.status { color: var(--ink-soft); }
+.status-error { color: var(--error); font-weight: 700; }
+.status-error p::before { content: "! "; }
+
+/* Test: digit on a plain background, nothing else competing for attention. */
+.test {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+}
+.test-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+.test-bar .practice-tag { margin: 0; }
+.test-bar button { margin-left: auto; }
+.test-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.test-area:focus { outline: none; }
+.stimulus {
+  margin: 0;
+  font-size: clamp(6rem, 28vw, 11rem);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  min-height: 1em;
+}
+.stimulus.feedback { font-size: clamp(2.5rem, 12vw, 4.5rem); }
+.stimulus.feedback-wrong { color: var(--error); }
+.stimulus.feedback-correct { color: var(--blue); }
+
+/* Results */
+.accuracy { margin-bottom: var(--space-4); }
+.accuracy-value {
+  font-size: clamp(3.5rem, 14vw, 5rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--blue);
+  margin-bottom: var(--space-1);
+}
+.accuracy-label { color: var(--ink-soft); }
+
+.metrics { margin: 0 0 var(--space-4); border-top: 1px solid var(--edge); }
+.metrics > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--edge);
+}
+.metrics dt { font-weight: 700; }
+.metrics dd { margin: 0; font-weight: 700; font-size: 1.4rem; grid-row: span 2; align-self: center; font-variant-numeric: tabular-nums; }
+.metrics p { margin: 0; color: var(--ink-soft); font-size: 0.95rem; }
+
+/* Dialog: the only raised surface, so it is the only one with a shadow. */
+dialog {
+  border: none;
+  border-radius: var(--radius-panel);
+  padding: var(--space-3);
+  max-width: min(26rem, calc(100vw - 2rem));
+  color: var(--ink);
+  box-shadow: 0 12px 40px rgb(29 36 51 / 0.25);
+}
+dialog::backdrop { background: rgb(29 36 51 / 0.45); }
+.dialog-actions { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-3); }

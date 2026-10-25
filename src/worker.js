@@ -66,6 +66,7 @@ async function getSettings(env) {
     totalTrials: row.total_trials,
     targetFrequency: row.target_frequency,
     trialMode: row.trial_mode === 1,
+    feedbackMode: row.feedback_mode,
   };
 }
 
@@ -73,8 +74,11 @@ async function putSettings(request, env) {
   const s = validateAdminSettings(await readJson(request));
   await env.DB.prepare(
     `UPDATE settings SET display_duration_ms = ?, total_trials = ?, target_frequency = ?,
-       trial_mode = ?, updated_at = ? WHERE id = 1`,
-  ).bind(s.displayDurationMs, s.totalTrials, s.targetFrequency, s.trialMode ? 1 : 0, new Date().toISOString()).run();
+       trial_mode = ?, feedback_mode = ?, updated_at = ? WHERE id = 1`,
+  ).bind(
+    s.displayDurationMs, s.totalTrials, s.targetFrequency, s.trialMode ? 1 : 0, s.feedbackMode,
+    new Date().toISOString(),
+  ).run();
   return json(await getSettings(env));
 }
 
@@ -84,7 +88,10 @@ async function postResult(request, env) {
   const id = crypto.randomUUID();
   // The server decides practice vs real from its own setting, never from the browser.
   // A session that spans a trial-mode switch is labelled with the setting at save time.
-  const isTrial = (await getSettings(env)).trialMode ? 1 : 0;
+  const current = await getSettings(env);
+  const isTrial = current.trialMode ? 1 : 0;
+  // Feedback is only shown in trial mode, so real sessions always store 'off'.
+  const feedbackMode = current.trialMode ? current.feedbackMode : 'off';
 
   // The attempt number is computed inside the INSERT so it is atomic (PLAN.md §9 D4).
   const insertSession = env.DB.prepare(
@@ -93,8 +100,8 @@ async function postResult(request, env) {
        status, consent_at, display_duration_ms, total_trials, target_frequency, trials_completed,
        correct_hits, commission_errors, omission_errors, correct_withholds, accuracy, mean_rt_ms,
        sd_rt_ms, rt_cv, commission_rate, omission_rate, anticipation_count, user_agent,
-       screen_width, screen_height, input_type, tab_hidden_count)
-     SELECT ?, ?, ?, ?, ?, COUNT(*) + 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+       screen_width, screen_height, input_type, tab_hidden_count, feedback_mode)
+     SELECT ?, ?, ?, ?, ?, COUNT(*) + 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
      FROM sessions WHERE participant_id = ? AND is_trial = ?`,
   ).bind(
     id, new Date().toISOString(), r.participantId, r.participantIdRaw, r.participantName, isTrial,
@@ -103,7 +110,7 @@ async function postResult(request, env) {
     summary.commissionErrors, summary.omissionErrors, summary.correctWithholds, summary.accuracy,
     summary.meanRtMs, summary.sdRtMs, summary.rtCv, summary.commissionRate, summary.omissionRate,
     summary.anticipationCount, request.headers.get('User-Agent')?.slice(0, 500) ?? null,
-    r.screenWidth, r.screenHeight, r.inputType, r.tabHiddenCount, r.participantId, isTrial,
+    r.screenWidth, r.screenHeight, r.inputType, r.tabHiddenCount, feedbackMode, r.participantId, isTrial,
   );
 
   const statements = [insertSession];
@@ -135,7 +142,7 @@ async function listSessions(url, env) {
 
 async function listTrials(url, env) {
   const { results } = await env.DB.prepare(
-    `SELECT t.*, s.participant_id, s.attempt_no, s.is_trial, s.status
+    `SELECT t.*, s.participant_id, s.attempt_no, s.is_trial, s.status, s.feedback_mode
      FROM trials t JOIN sessions s ON s.id = t.session_id ${trialFilter(url, 's.')}
      ORDER BY s.created_at, t.trial_no`,
   ).all();

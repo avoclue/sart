@@ -1,7 +1,7 @@
 // Validation of request bodies. Pure functions, so they can be unit-tested with node --test.
 
 import {
-  SETTING_OPTIONS, BLANK_MS, targetCount, createTrial, registerPress, scoreTrial,
+  SETTING_OPTIONS, FEEDBACK_MODES, BLANK_MS, targetCount, createTrial, registerPress, scoreTrial,
 } from '../public/js/sart.js';
 
 export const INPUT_TYPES = ['keyboard', 'touch', 'mixed', 'none'];
@@ -47,7 +47,8 @@ export function validateSettings(body) {
 export function validateAdminSettings(body) {
   const settings = validateSettings(body);
   if (typeof body.trialMode !== 'boolean') fail('trialMode must be a boolean');
-  return { ...settings, trialMode: body.trialMode };
+  if (!FEEDBACK_MODES.includes(body.feedbackMode)) fail('invalid feedbackMode');
+  return { ...settings, trialMode: body.trialMode, feedbackMode: body.feedbackMode };
 }
 
 // Rebuilds every trial from its digit and presses, so the outcome is

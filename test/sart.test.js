@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   TARGET_DIGIT, targetCount, generateSequence, responseWindowMs,
   createTrial, registerPress, scoreTrial, summarize,
+  feedbackFor, estimateMinutes, combineInputTypes,
 } from '../public/js/sart.js';
 
 function seededRandom(seed) {
@@ -117,4 +118,25 @@ test('accuracy of an aborted session uses trials completed', () => {
   const s = summarize([scored(5, 300), scored(5)]);
   assert.equal(s.trialsCompleted, 2);
   assert.equal(s.accuracy, 50);
+});
+
+test('feedbackFor follows the feedback mode', () => {
+  assert.equal(feedbackFor('commission', 'off'), null);
+  assert.equal(feedbackFor('commission', 'errors'), 'wrong');
+  assert.equal(feedbackFor('omission', 'errors'), 'wrong');
+  assert.equal(feedbackFor('hit', 'errors'), null);
+  assert.equal(feedbackFor('withhold', 'all'), 'correct');
+  assert.equal(feedbackFor('omission', 'all'), 'wrong');
+});
+
+test('estimateMinutes rounds the test length up', () => {
+  assert.equal(estimateMinutes({ displayDurationMs: 500, totalTrials: 100 }), 2);
+  assert.equal(estimateMinutes({ displayDurationMs: 250, totalTrials: 50 }), 1);
+  assert.equal(estimateMinutes({ displayDurationMs: 750, totalTrials: 200 }), 4);
+});
+
+test('combineInputTypes reports none, a single type or mixed', () => {
+  assert.equal(combineInputTypes([]), 'none');
+  assert.equal(combineInputTypes(['keyboard', 'keyboard']), 'keyboard');
+  assert.equal(combineInputTypes(['keyboard', 'touch']), 'mixed');
 });
