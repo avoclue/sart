@@ -9,6 +9,7 @@ import {
 const $ = (id) => document.getElementById(id);
 const BLUE = '#093697';
 const RED = '#a3261b';
+const INK = '#1d2433';
 
 let sessions = [];
 let sort = { key: 'created_at', direction: 'desc' };
@@ -301,9 +302,8 @@ async function openDetail(s) {
     $('detail-status').textContent = `Data per angka tidak bisa dimuat (${err.message}). Tutup lalu buka lagi detail ini.`;
     return;
   }
-  const withRt = trials.filter((t) => t.rt_ms !== null);
-  if (withRt.length === 0) {
-    $('detail-status').textContent = 'Sesi ini tidak punya respons, jadi tidak ada RT untuk digambar.';
+  if (trials.length === 0) {
+    $('detail-status').textContent = 'Sesi ini dihentikan sebelum ada angka yang selesai, jadi tidak ada yang bisa digambar.';
     return;
   }
   if (!chartsAvailable()) {
@@ -312,13 +312,19 @@ async function openDetail(s) {
   }
   $('detail-status').hidden = true;
   $('detail-figure').hidden = false;
-  const points = (outcome) => withRt.filter((t) => t.outcome === outcome).map((t) => ({ x: t.trial_no, y: t.rt_ms }));
+  // The y-axis spans the whole response window. Misses have no RT, so they sit in a band
+  // below 0 ms where they cannot be mistaken for very fast presses.
+  const windowMs = s.display_duration_ms + 200;
+  const missRow = -0.06 * windowMs;
+  const points = (outcome) => trials.filter((t) => t.outcome === outcome)
+    .map((t) => ({ x: t.trial_no, y: outcome === 'omission' ? missRow : t.rt_ms }));
   replaceChart('rt', $('chart-rt'), {
     type: 'scatter',
     data: {
       datasets: [
         { label: 'Hit (angka selain 3)', data: points('hit'), backgroundColor: BLUE, pointStyle: 'circle', pointRadius: 4, clip: false },
         { label: 'Komisi (menekan 3)', data: points('commission'), backgroundColor: RED, pointStyle: 'triangle', pointRadius: 6, clip: false },
+        { label: 'Terlewat (tanpa RT)', data: points('omission'), borderColor: INK, backgroundColor: INK, borderWidth: 2, pointStyle: 'crossRot', pointRadius: 6, clip: false },
       ],
     },
     options: {
@@ -326,10 +332,25 @@ async function openDetail(s) {
       animation: false,
       // Points on the first and last trial sit on the axis ends; leave room so they are not cut.
       layout: { padding: { left: 8, right: 12, top: 8 } },
-      plugins: { legend: { labels: { color: '#1d2433', usePointStyle: true } } },
+      plugins: {
+        legend: { labels: { color: INK, usePointStyle: true } },
+        tooltip: {
+          callbacks: {
+            label: (c) => (c.datasetIndex === 2
+              ? `Angka ke-${c.raw.x}: terlewat`
+              : `Angka ke-${c.raw.x}: ${number(c.raw.y)} ms`),
+          },
+        },
+      },
       scales: {
-        x: { min: 1, max: s.total_trials, title: { display: true, text: 'Angka ke-', color: '#1d2433' }, ticks: { color: '#1d2433' } },
-        y: { min: 0, title: { display: true, text: 'RT (ms)', color: '#1d2433' }, ticks: { color: '#1d2433' } },
+        x: { min: 1, max: s.total_trials, title: { display: true, text: 'Angka ke-', color: INK }, ticks: { color: INK } },
+        y: {
+          min: 2 * missRow,
+          max: windowMs,
+          title: { display: true, text: 'RT (ms)', color: INK },
+          // No negative tick labels: the band below 0 only holds the misses.
+          ticks: { color: INK, callback: (v) => (v < 0 ? '' : v) },
+        },
       },
     },
   });
