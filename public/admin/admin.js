@@ -10,6 +10,7 @@ const $ = (id) => document.getElementById(id);
 const BLUE = '#093697';
 const RED = '#a3261b';
 const INK = '#1d2433';
+const GREEN = '#1e7a3c';
 
 let sessions = [];
 let sort = { key: 'created_at', direction: 'desc' };
@@ -312,12 +313,12 @@ async function openDetail(s) {
   }
   $('detail-status').hidden = true;
   $('detail-figure').hidden = false;
-  // The y-axis spans the whole response window. Misses have no RT, so they sit in a band
-  // below 0 ms where they cannot be mistaken for very fast presses.
+  // The y-axis spans the whole response window. Misses and correct withholds have no RT,
+  // so they sit in a band below 0 ms where they cannot be mistaken for very fast presses.
   const windowMs = s.display_duration_ms + 200;
   const missRow = -0.06 * windowMs;
   const points = (outcome) => trials.filter((t) => t.outcome === outcome)
-    .map((t) => ({ x: t.trial_no, y: outcome === 'omission' ? missRow : t.rt_ms }));
+    .map((t) => ({ x: t.trial_no, y: t.rt_ms ?? missRow }));
   replaceChart('rt', $('chart-rt'), {
     type: 'scatter',
     data: {
@@ -325,6 +326,8 @@ async function openDetail(s) {
         { label: 'Hit (angka selain 3)', data: points('hit'), backgroundColor: BLUE, pointStyle: 'circle', pointRadius: 4, clip: false },
         { label: 'Komisi (menekan 3)', data: points('commission'), backgroundColor: RED, pointStyle: 'triangle', pointRadius: 6, clip: false },
         { label: 'Terlewat (tanpa RT)', data: points('omission'), borderColor: INK, backgroundColor: INK, borderWidth: 2, pointStyle: 'crossRot', pointRadius: 6, clip: false },
+        // A ring, not a filled dot, so it differs from hits by shape as well as colour.
+        { label: 'Menahan 3 dengan benar (tanpa RT)', data: points('withhold'), borderColor: GREEN, backgroundColor: 'transparent', borderWidth: 2.5, pointStyle: 'circle', pointRadius: 5, clip: false },
       ],
     },
     options: {
@@ -336,9 +339,11 @@ async function openDetail(s) {
         legend: { labels: { color: INK, usePointStyle: true } },
         tooltip: {
           callbacks: {
-            label: (c) => (c.datasetIndex === 2
-              ? `Angka ke-${c.raw.x}: terlewat`
-              : `Angka ke-${c.raw.x}: ${number(c.raw.y)} ms`),
+            label: (c) => {
+              if (c.datasetIndex === 2) return `Angka ke-${c.raw.x}: terlewat`;
+              if (c.datasetIndex === 3) return `Angka ke-${c.raw.x}: angka 3, ditahan dengan benar`;
+              return `Angka ke-${c.raw.x}: ${number(c.raw.y)} ms`;
+            },
           },
         },
       },
@@ -348,7 +353,7 @@ async function openDetail(s) {
           min: 2 * missRow,
           max: windowMs,
           title: { display: true, text: 'RT (ms)', color: INK },
-          // No negative tick labels: the band below 0 only holds the misses.
+          // No negative tick labels: the band below 0 only holds trials without an RT.
           ticks: { color: INK, callback: (v) => (v < 0 ? '' : v) },
         },
       },
