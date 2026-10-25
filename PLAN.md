@@ -67,14 +67,17 @@ once at the end of that window. Metric definitions stay the same.
 |---|---|---|
 | 1 | Backend | Not Google Apps Script. A simple admin page with export is needed. Final choice is in §4. |
 | 2 | Identity form | Name only for now. More fields are still being discussed. |
-| 3 | Purpose | **Research.** A consent checkbox was not requested. It is noted as a likely requirement for ethics approval. |
+| 3 | Purpose | **Research.** A consent checkbox is required before the test starts. The consent text will come from the research team; a placeholder is used until then. |
 | 4 | Settings | Same options and defaults as the reference (§2). |
 | 5 | Double-count bug | Fix it. |
 | 6 | Reaction time | Record it. |
 | 7 | Results visible to participant | Yes. |
 | 8 | Retry | Allowed. |
-| 9 | Language | UI in **Bahasa Indonesia**. |
+| 9 | Language | UI in **Bahasa Indonesia**. Code and docs in English. |
 | 10 | Hosting | Cloudflare. |
+| R1–R7 | Research additions | All accepted (trial-level data, RT metrics, rates, anticipations, practice round, aborted sessions saved, data-quality checks). |
+| R8 | Classic SART comparability | **Still under discussion.** Follow the reference for now. |
+| — | Dashboard | Admin dashboard for RT and other metrics. Scope in §6. |
 | 11 | Scale and devices | About 30 participants, desktop first. Mobile must still work. |
 
 ## 4. Architecture
@@ -120,12 +123,25 @@ adds a second provider and requires writing Row Level Security policies.
 Participants see the four reference metrics: Accuracy, Correct Hits, Commission
 Errors and Omission Errors.
 
-These are stored for researchers only (pending confirmation, Q-R2):
+These are stored for researchers only and shown on the admin dashboard:
 - mean RT and SD of RT on correct hits
 - RT coefficient of variation (SD/mean)
 - commission rate (commissions ÷ 3-trials)
 - omission rate (omissions ÷ non-3 trials)
 - anticipation count (presses faster than 100 ms)
+
+Practice round: about 18 trials before the scored test. These are not scored and not saved.
+Aborted sessions are saved with `status = aborted`.
+
+### Admin dashboard (proposed scope)
+
+- A per-session table with every metric. It is sortable and can be filtered by name and status.
+- Summary cards: number of participants, number of sessions, and the mean of each metric
+  over completed sessions.
+- A few simple charts: a distribution of accuracy and RT variability across participants,
+  and an RT-by-trial plot for one session (this shows attention drifting).
+- Charts use Chart.js loaded from a CDN, so there is still no build step.
+- The dashboard is for monitoring the study. Formal analysis should use the CSV exports in R, SPSS or Python.
 
 ## 7. Implementation steps
 
@@ -133,15 +149,21 @@ These are stored for researchers only (pending confirmation, Q-R2):
    `wrangler.toml`, `README.md`.
 2. SART engine as pure functions: sequence generation, trial state machine,
    scoring (every trial scored once), RT metrics. Unit tests with `node --test`.
-3. Participant UI (Indonesian): name form, instructions, test, results, retry.
+3. Participant UI (Indonesian): name form plus consent checkbox, instructions,
+   practice round, test, results, retry.
    Keyboard and touch input, ignoring held-key auto-repeat.
 4. API: `GET /api/settings`, `POST /api/results` (validate, then insert the session and its trials in one batch).
-5. Admin: login, settings form, sessions table, and two CSV exports
+5. Admin: login, settings form, dashboard (§6), and two CSV exports
    (sessions summary and trial-level data).
-6. Deploy guide: create the D1 database, apply the schema, set `ADMIN_PASSWORD`, connect the repo to Pages.
+6. Local development: `wrangler pages dev` with a local D1 database (SQLite file
+   under `.wrangler/`, git-ignored). Schema changes go through `wrangler d1 migrations`.
+7. Deploy guide: create the remote D1 database, apply migrations with `--remote`, set
+   `ADMIN_PASSWORD`, connect the repo to Pages.
 
 ## 8. Open items
 
 - Backend choice: D1 (proposed) or Supabase.
-- Research questions Q-R1 … Q-R8 (see chat, 2026-10-25). Answers will be recorded here.
-- Consent checkbox: requested? (Ethics committees usually require one.)
+- R8: whether to add a classic Robertson et al. (1997) preset (250 ms digit + 900 ms mask,
+  225 trials, about 11% targets, random font sizes) for comparison with published norms.
+- Consent text (from the research team).
+- Final identity fields (name only for now).

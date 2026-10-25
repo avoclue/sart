@@ -28,5 +28,14 @@ The project is still in the planning stage, so no code exists yet.
 
 ## Conventions
 
+- **Language:** code, comments, commit messages and docs are in English. Only
+  participant-facing UI text is in Bahasa Indonesia.
+- **Commit messages** follow [Conventional Commits](https://www.conventionalcommits.org/):
+  - Subject line format: `<type>: <description>`. `type` is one of `feat`, `fix`, `docs`,
+    `refactor`, `test`, `chore`, `style`, `perf`, `build` or `ci`.
+  - The description starts with an imperative verb in lowercase, is one sentence,
+    and has no trailing period. For example, `feat: add trial-level CSV export`.
+  - A body is optional. Separate it from the subject with a blank line.
+
 - Do not commit secrets, deployment IDs or personal data. Endpoint URLs go in one config constant.
 - Record any change to scoring or procedure in `PLAN.md` together with the reason for it.
