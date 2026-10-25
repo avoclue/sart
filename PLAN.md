@@ -65,7 +65,7 @@ once at the end of that window. Metric definitions stay the same.
 
 | # | Topic | Decision |
 |---|---|---|
-| 1 | Backend | Not Google Apps Script. A simple admin page with export is needed. Final choice is in §4. |
+| 1 | Backend | **Cloudflare Pages + Pages Functions + D1 (SQLite).** Everything is deployed on Cloudflare. A simple admin page with export is needed. |
 | 2 | Identity form | Name only for now. More fields are still being discussed. |
 | 3 | Purpose | **Research.** A consent checkbox is required before the test starts. The consent text will come from the research team; a placeholder is used until then. |
 | 4 | Settings | Same options and defaults as the reference (§2). |
@@ -77,12 +77,12 @@ once at the end of that window. Metric definitions stay the same.
 | 10 | Hosting | Cloudflare. |
 | R1–R7 | Research additions | All accepted (trial-level data, RT metrics, rates, anticipations, practice round, aborted sessions saved, data-quality checks). |
 | R8 | Classic SART comparability | **Still under discussion.** Follow the reference for now. |
-| — | Dashboard | Admin dashboard for RT and other metrics. Scope in §6. |
+| — | Dashboard | **Admin only.** Covers RT and other metrics; scope in §6. Participants see only the four reference metrics. |
 | 11 | Scale and devices | About 30 participants, desktop first. Mobile must still work. |
 
 ## 4. Architecture
 
-### Proposed: everything on Cloudflare (Pages + Pages Functions + D1)
+### Chosen: everything on Cloudflare (Pages + Pages Functions + D1)
 
 ```
 Browser ── static HTML/JS (Cloudflare Pages)
@@ -99,7 +99,7 @@ Browser ── static HTML/JS (Cloudflare Pages)
   the Functions (HTTP Basic Auth). This is the simplest option for a single admin.
   Cloudflare Access is an optional upgrade later.
 
-### Alternative: Cloudflare Pages + Supabase
+### Rejected: Cloudflare Pages + Supabase
 
 This also works for 30 users. But free projects **pause after about 7 days without
 activity**, and a research study with gaps between sessions will hit that. It also
@@ -162,7 +162,8 @@ Aborted sessions are saved with `status = aborted`.
 
 ## 8. Open items
 
-- Backend choice: D1 (proposed) or Supabase.
+- **Do not start building until the user says "start".**
+- Before building, check Cloudflare's current guidance on Pages vs Workers static assets for new projects.
 - R8: whether to add a classic Robertson et al. (1997) preset (250 ms digit + 900 ms mask,
   225 trials, about 11% targets, random font sizes) for comparison with published norms.
 - Consent text (from the research team).
