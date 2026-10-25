@@ -1,6 +1,6 @@
 # SART — Implementation Plan
 
-Status: **draft — answers recorded in §3, backend + research items awaiting confirmation (§8)**
+Status: **ready to build, except §9 defaults awaiting user confirmation.** Decisions are in §3 and remaining open items in §8.
 
 ## 1. Goal
 
@@ -56,10 +56,9 @@ the 200 ms blank that follows. A late press therefore counts twice:
 - A 3, pressed during the blank → **both** a correct withhold **and** a commission.
 
 At the 250 ms "Fast" setting most human reactions (~300–400 ms) land in the
-blank, so this distorts the scores badly. **Proposed fix:** the response window
+blank, so this distorts the scores badly. **Fix (confirmed):** the response window
 is the digit display plus the blank that follows it, and the trial is scored
 once at the end of that window. Metric definitions stay the same.
-(Needs your confirmation — open question Q5.)
 
 ## 3. Decisions (answers from 2026-10-25)
 
@@ -110,7 +109,7 @@ adds a second provider and requires writing Row Level Security policies.
 - `settings`: a single row with `display_duration_ms`, `total_trials`, `target_frequency`
 - `sessions`: one row per test attempt
   - `id`, `created_at` (UTC), `participant_name`, `attempt_no`, `status`
-    (completed/aborted, see Q-R6)
+    (completed/aborted)
   - settings used, plus the summary metrics (§6)
   - device info: user agent, screen size, input type (keyboard/touch),
     `tab_hidden_count`
@@ -133,7 +132,7 @@ These are stored for researchers only and shown on the admin dashboard:
 Practice round: about 18 trials before the scored test. These are not scored and not saved.
 Aborted sessions are saved with `status = aborted`.
 
-### Admin dashboard (proposed scope)
+### Admin dashboard (admin only)
 
 - A per-session table with every metric. It is sortable and can be filtered by name and status.
 - Summary cards: number of participants, number of sessions, and the mean of each metric
@@ -162,9 +161,29 @@ Aborted sessions are saved with `status = aborted`.
 
 ## 8. Open items
 
-- **Do not start building until the user says "start".**
+- **Do not start building until the user says "start"** and has confirmed §9.
 - Before building, check Cloudflare's current guidance on Pages vs Workers static assets for new projects.
 - R8: whether to add a classic Robertson et al. (1997) preset (250 ms digit + 900 ms mask,
   225 trials, about 11% targets, random font sizes) for comparison with published norms.
 - Consent text (from the research team).
 - Final identity fields (name only for now).
+
+## 9. Behaviour details (proposed defaults, awaiting confirmation)
+
+These details were not settled during planning. A builder must not guess them.
+Use these defaults once the user confirms them.
+
+| # | Topic | Proposed default |
+|---|---|---|
+| D1 | Reaction time | Measured from digit onset (`performance.now()`). Only the first press in a trial's response window counts; later presses only increase `extra_presses`. |
+| D2 | Anticipations (< 100 ms) | Still scored as normal presses, so the four reference metrics are unchanged. They are counted separately and excluded from the RT metrics. |
+| D3 | Practice round | 18 trials using the admin's display duration, with 3 targets. Shows "Benar"/"Salah" feedback after each trial. Not saved. Only before the first attempt; retries skip it. |
+| D4 | Attempt number | Counted on the server: the number of earlier sessions with the same name (trimmed, case-insensitive) + 1. |
+| D5 | End Test early | Confirm dialog, then save the session as `aborted` along with the trials completed so far. The participant returns to the start screen. |
+| D6 | Tab switch during the test | The test keeps running and `tab_hidden_count` is recorded. The admin dashboard flags sessions where the count is above 0. |
+| D7 | Consent | The test cannot start until the checkbox is ticked. `consent_at` is stored with the session. The consent text is a placeholder for now. |
+| D8 | Admin login | Password only (Basic Auth, any username). The password comes from the `ADMIN_PASSWORD` secret. |
+| D9 | Times in the admin UI and CSV | Stored in UTC. Shown in WIB (Asia/Jakarta). |
+| D10 | Deleting data | The admin can delete a session and its trials, for test runs or a participant withdrawing. Deletion is permanent and needs a confirmation step. |
+| D11 | Fullscreen | Not forced. |
+| D12 | Dashboard "participants" | Count of distinct names (same normalisation as D4). |
