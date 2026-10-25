@@ -1,0 +1,15 @@
+{
+  "name": "sart",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "dev": "wrangler dev",
+    "db:migrate:local": "wrangler d1 migrations apply sart --local",
+    "db:migrate:remote": "wrangler d1 migrations apply sart --remote",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.152.0"
+  }
+}
