@@ -26,12 +26,12 @@ async function sha256(text) {
 
 // Basic Auth with any username; only the password is checked (PLAN.md §9 D8).
 async function isAdmin(request, env) {
-  if (!env.ADMIN_PASSWORD) return false;
   const header = request.headers.get('Authorization') ?? '';
   if (!header.startsWith('Basic ')) return false;
   let decoded;
   try {
-    decoded = atob(header.slice(6));
+    // Browsers send the credentials as UTF-8 bytes, so decode them as UTF-8, not Latin-1.
+    decoded = new TextDecoder().decode(Uint8Array.from(atob(header.slice(6)), (c) => c.charCodeAt(0)));
   } catch {
     return false;
   }
@@ -179,6 +179,14 @@ async function route(request, env) {
   const { pathname } = url;
 
   if (pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/api/admin/')) {
+    // Without a password every login would fail with a bare 401, which looks like a typo.
+    if (!env.ADMIN_PASSWORD) {
+      console.error('ADMIN_PASSWORD is not set. Locally, put it in .env; when deployed, run: npx wrangler secret put ADMIN_PASSWORD');
+      return new Response(
+        'Admin belum bisa dibuka: ADMIN_PASSWORD belum diatur di server. Lihat README, bagian "Local development".',
+        { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+      );
+    }
     if (!(await isAdmin(request, env))) return unauthorized();
     if (pathname.startsWith('/api/admin/')) return handleAdminApi(request, url, env);
     return env.ASSETS.fetch(request);
