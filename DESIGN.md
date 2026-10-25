@@ -26,7 +26,7 @@ consistent screens, hover states only, and no animation during the test.
 
 ## Typography
 
-Atkinson Hyperlegible, loaded from Google Fonts.
+Atkinson Hyperlegible, bundled in `public/fonts/` (SIL Open Font License) so participants' browsers never contact Google.
 
 ## Theme
 
