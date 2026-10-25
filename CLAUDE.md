@@ -28,8 +28,8 @@ Building has started (engine and backend first). `DESIGN.md` holds the UI direct
 
 ## Conventions
 
-- **Language:** code, comments, commit messages and docs are in English. Only
-  participant-facing UI text is in Bahasa Indonesia.
+- **Language:** code, comments, commit messages and docs are in English. All UI text
+  (participant pages and the admin page) is in Bahasa Indonesia.
 - **Commit messages** follow [Conventional Commits](https://www.conventionalcommits.org/):
   - Subject line format: `<type>: <description>`. `type` is one of `feat`, `fix`, `docs`,
     `refactor`, `test`, `chore`, `style`, `perf`, `build` or `ci`.

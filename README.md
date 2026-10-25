@@ -5,7 +5,8 @@ The design is in `PLAN.md`, and the UI direction is in `DESIGN.md`.
 
 ## Layout
 
-- `public/`: static files served to the browser. `public/js/sart.js` is the pure SART engine.
+- `public/`: static files served to the browser. `public/js/sart.js` is the pure SART engine,
+  and `public/js/dashboard.js` holds the pure dashboard helpers. `public/admin/` is the admin page.
 - `src/worker.js`: the API and admin auth. `src/validate.js` and `src/csv.js` are pure helpers.
 - `migrations/`: D1 schema.
 - `test/`: unit tests (`node --test`).
@@ -23,6 +24,11 @@ The design is in `PLAN.md`, and the UI direction is in `DESIGN.md`.
 | GET | `/api/admin/export/trials.csv` | admin | Trial-level CSV |
 
 Admin auth is HTTP Basic: any username, with the password from the `ADMIN_PASSWORD` secret.
+
+## Admin page
+
+Open `/admin/` (locally http://localhost:8787/admin/). The browser asks for a username and
+password: any username works, and the password is `ADMIN_PASSWORD`. To log out, close the browser.
 
 ## Local development
 

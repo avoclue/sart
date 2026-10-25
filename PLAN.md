@@ -1,6 +1,6 @@
 # SART — Implementation Plan
 
-Status: **building.** Engine and backend are done; participant UI and admin UI wait on design direction (`DESIGN.md`). Decisions are in §3 and §9. Open items are in §8.
+Status: **building.** Engine, backend, participant UI and admin UI are done. Deployment is next. Decisions are in §3 and §9. Open items are in §8.
 
 ## 1. Goal
 
@@ -145,7 +145,7 @@ Aborted sessions are saved with `status = aborted`.
   over completed sessions.
 - A few simple charts: a distribution of accuracy and RT variability across participants,
   and an RT-by-trial plot for one session (this shows attention drifting).
-- Charts use Chart.js loaded from a CDN, so there is still no build step.
+- Charts use Chart.js loaded from a CDN (pinned, with an integrity hash), so there is still no build step.
 - The dashboard is for monitoring the study. Formal analysis should use the CSV exports in R, SPSS or Python.
 
 ## 7. Implementation steps
@@ -200,3 +200,6 @@ Aborted sessions are saved with `status = aborted`.
 | D20 | Retry and return | "Ulangi tes" on the results screen goes back to the instructions with the same name, ID and consent; the server gives the next attempt number. After an early end the participant is back at the form with name and ID kept, and must tick consent again. |
 | D21 | Input | Spacebar on a keyboard, or a touch or pen tap on the test area. Mouse clicks are not responses, because the instructions ask for the spacebar on a computer. The session's `input_type` is `keyboard`, `touch`, `mixed` (both used in one session) or `none` (no press at all). |
 | D22 | Test length shown | The instructions show an estimate in whole minutes, rounded up: (1000 ms + trials × (display + 200 ms)) / 60 s. Feedback pauses are not included. No other setting is shown. |
+| D23 | Dashboard basis | Each participant is represented by their **latest completed real session**: practice and aborted sessions are left out, and a retry replaces the earlier attempt. The summary means (with n per metric) and both charts use this set. The participant and session counts cover all real sessions. |
+| D24 | Dashboard charts | Accuracy and RT variability (CV) are dot strips with one dot per participant, because with about 30 people a histogram hides individuals and has a noisy shape. Clicking "Lihat RT" on a session row shows its RT for each trial, with hits and presses on a 3 drawn in different shapes. |
+| D25 | Admin page | Text in Bahasa Indonesia. Chart.js 4.4.1 comes from cdnjs, pinned with a Subresource Integrity hash. If it fails to load, the page says so and the tables still work. Settings save directly with no confirm step. Settings are not changed mid-study. Logging out means closing the browser (Basic Auth), and the page says so. The text filter matches name or participant ID. |

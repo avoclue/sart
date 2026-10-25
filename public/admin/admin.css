@@ -1,0 +1,140 @@
+/* Admin page. Builds on the tokens and controls in /css/app.css. */
+
+body.admin { font-size: 1rem; }
+
+.admin-header {
+  background: var(--blue);
+  color: #fff;
+  padding: var(--space-3) var(--space-2);
+}
+.admin-header > div { max-width: 76rem; margin: 0 auto; }
+.admin-header h1 { color: #fff; font-size: 1.5rem; margin-bottom: 0.25rem; }
+.admin-header .hint { color: #fff; margin: 0; }
+
+.admin-main {
+  max-width: 76rem;
+  padding: var(--space-3) var(--space-2) var(--space-4);
+}
+
+.block {
+  background: var(--surface);
+  border-radius: var(--radius-panel);
+  padding: var(--space-3) clamp(var(--space-2), 3vw, var(--space-3));
+  margin-bottom: var(--space-3);
+}
+.block:focus { outline: 3px solid var(--blue); outline-offset: 3px; }
+
+.hint { color: var(--ink-soft); font-size: 0.95rem; }
+.empty { color: var(--ink-soft); }
+
+select, input[type="search"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1.5px solid var(--edge);
+  border-radius: var(--radius-control);
+}
+
+.settings-grid, .filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.settings-grid .hint { margin: 0.35rem 0 0; }
+.filters { align-items: end; }
+.filters .check { min-height: 44px; align-items: center; }
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.form-actions .status { margin: 0; }
+
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0.6rem 1.4rem;
+  border-radius: var(--radius-control);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* Overview */
+.counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-3);
+}
+.counts dt { color: var(--ink-soft); }
+.counts dd { margin: 0; font-size: 2rem; font-weight: 700; color: var(--blue); font-variant-numeric: tabular-nums; }
+
+#overview-data {
+  display: grid;
+  grid-template-columns: minmax(16rem, 22rem) 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+@media (max-width: 52rem) {
+  #overview-data { grid-template-columns: 1fr; }
+}
+
+table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+caption { text-align: left; font-weight: 700; margin-bottom: var(--space-1); }
+th, td { padding: 0.45rem 0.6rem; text-align: left; border-bottom: 1px solid var(--edge); }
+td.num, th.num { text-align: right; }
+.means { width: 100%; }
+
+.charts { display: grid; gap: var(--space-3); min-width: 0; }
+figure { margin: 0; min-width: 0; }
+figcaption { font-weight: 700; margin-bottom: var(--space-1); }
+#detail figcaption { font-weight: 400; color: var(--ink-soft); }
+.chart-box { position: relative; width: 100%; }
+.chart-box.strip { height: 120px; }
+.chart-box.tall { height: 320px; }
+
+/* Sessions table: scrolls sideways inside its own box so the page never does. */
+.table-scroll { overflow-x: auto; border: 1px solid var(--edge); border-radius: var(--radius-control); }
+.sessions { width: 100%; white-space: nowrap; font-size: 0.95rem; }
+.sessions thead th { background: var(--paper); position: sticky; top: 0; }
+.sessions th button {
+  min-height: 36px;
+  padding: 0.2rem 0.3rem;
+  background: none;
+  border: none;
+  color: var(--ink);
+  font-weight: 700;
+}
+.sessions th[aria-sort] button::after { content: " ▲"; color: var(--blue); }
+.sessions th[aria-sort="descending"] button::after { content: " ▼"; }
+.sessions td button { min-height: 36px; padding: 0.2rem 0.8rem; }
+
+/* A real state: the tab was hidden during the test (PLAN.md §9 D6). */
+.flag {
+  background: var(--yellow);
+  color: var(--ink);
+  font-weight: 700;
+  padding: 0.05rem 0.45rem;
+  border-radius: 4px;
+}
+
+.detail-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2); }
+.detail-head h2 { margin: 0; }
+#detail-summary { margin-top: var(--space-2); }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
