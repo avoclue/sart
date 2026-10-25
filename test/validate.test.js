@@ -16,7 +16,6 @@ function body(overrides = {}) {
   return {
     participantName: ' Budi ',
     participantId: ' P01 ',
-    isTrial: false,
     status: 'completed',
     consentAt: '2026-10-25T10:00:00.000Z',
     settings: { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1 },

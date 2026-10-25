@@ -89,7 +89,6 @@ export function validateResult(body) {
   if (!body || typeof body !== 'object') fail('body must be an object');
   const participantName = text(body.participantName, 'participantName', 100);
   const participantIdRaw = text(body.participantId, 'participantId', 64);
-  if (typeof body.isTrial !== 'boolean') fail('isTrial must be a boolean');
   if (!['completed', 'aborted'].includes(body.status)) fail('status must be completed or aborted');
   if (typeof body.consentAt !== 'string' || Number.isNaN(Date.parse(body.consentAt))) fail('consentAt must be a date');
 
@@ -101,7 +100,6 @@ export function validateResult(body) {
     participantName,
     participantIdRaw,
     participantId: normaliseParticipantId(participantIdRaw),
-    isTrial: body.isTrial,
     status: body.status,
     consentAt: new Date(body.consentAt).toISOString(),
     settings,

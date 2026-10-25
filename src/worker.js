@@ -82,7 +82,9 @@ async function postResult(request, env) {
   const r = validateResult(await readJson(request));
   const summary = summarize(r.trials);
   const id = crypto.randomUUID();
-  const isTrial = r.isTrial ? 1 : 0;
+  // The server decides practice vs real from its own setting, never from the browser.
+  // A session that spans a trial-mode switch is labelled with the setting at save time.
+  const isTrial = (await getSettings(env)).trialMode ? 1 : 0;
 
   // The attempt number is computed inside the INSERT so it is atomic (PLAN.md §9 D4).
   const insertSession = env.DB.prepare(
