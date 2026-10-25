@@ -140,3 +140,34 @@ figcaption { font-weight: 700; margin-bottom: var(--space-1); }
 }
 
 #settings-form .check { margin-bottom: var(--space-2); }
+
+fieldset {
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  margin: 0 0 var(--space-3);
+  min-width: 0;
+}
+legend { font-weight: 700; padding: 0 0.4rem; color: var(--blue); }
+
+.admin-header a { color: #fff; font-weight: 700; margin-left: 0.5rem; }
+
+.glossary { margin: 0; }
+.glossary > div { padding: var(--space-2) 0; border-bottom: 1px solid var(--edge); }
+.glossary > div:first-child { border-top: 1px solid var(--edge); }
+.glossary dt { font-weight: 700; margin-bottom: 0.25rem; }
+.glossary dd { margin: 0; max-width: 68ch; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  font-weight: 400;
+  background: var(--paper);
+  border: 1px solid #e2ddd0;
+  border-radius: 4px;
+  padding: 0 0.3em;
+}
+/* The usual blue ring would vanish on the blue header. */
+.admin-header a:focus-visible { outline-color: #fff; }
+#glossary-title { scroll-margin-top: var(--space-3); }
+/* A lone field in a row keeps the width of the fields above instead of stretching. */
+fieldset .settings-grid { grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }

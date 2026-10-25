@@ -16,7 +16,8 @@
   <header class="admin-header">
     <div>
       <h1>Admin [JUDUL STUDI]</h1>
-      <p class="hint">Untuk keluar, tutup browser. Buka halaman ini hanya di komputer Anda sendiri.</p>
+      <p class="hint">Untuk keluar, tutup browser. Buka halaman ini hanya di komputer Anda sendiri.
+        <a href="#glossary-title">Penjelasan istilah</a></p>
     </div>
   </header>
 
@@ -26,49 +27,59 @@
       <h2 id="settings-title">Pengaturan tes</h2>
       <p id="settings-status" class="status" role="status">Memuat pengaturan...</p>
       <form id="settings-form" hidden>
-        <div class="settings-grid">
-          <div>
-            <label for="set-duration">Durasi angka</label>
-            <select id="set-duration">
-              <option value="250">250 ms (cepat)</option>
-              <option value="500">500 ms (standar)</option>
-              <option value="750">750 ms (lambat)</option>
-            </select>
+        <fieldset>
+          <legend>Tes</legend>
+          <div class="settings-grid">
+            <div>
+              <label for="set-duration">Durasi angka</label>
+              <select id="set-duration">
+                <option value="250">250 ms (cepat)</option>
+                <option value="500">500 ms (standar)</option>
+                <option value="750">750 ms (lambat)</option>
+              </select>
+            </div>
+            <div>
+              <label for="set-trials">Jumlah angka per sesi</label>
+              <select id="set-trials">
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+            </div>
+            <div>
+              <label for="set-frequency">Proporsi angka 3</label>
+              <select id="set-frequency">
+                <option value="0.1">10%</option>
+                <option value="0.2">20%</option>
+                <option value="0.3">30%</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label for="set-trials">Jumlah angka per sesi</label>
-            <select id="set-trials">
-              <option value="50">50</option>
-              <option value="100">100</option>
-              <option value="200">200</option>
-            </select>
+          <label class="check">
+            <input id="set-random-font" type="checkbox">
+            <span>Ukuran angka acak: tiap angka tampil dalam salah satu dari 5 ukuran (40% sampai 100%), seperti SART klasik (Robertson dkk., 1997). Berlaku untuk sesi latihan dan utama.</span>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Mode latihan</legend>
+          <label class="check">
+            <input id="set-trial-mode" type="checkbox">
+            <span>Aktifkan mode latihan: semua tes yang dikerjakan partisipan dicatat sebagai sesi latihan dan diberi label "Sesi Latihan".</span>
+          </label>
+          <div class="settings-grid">
+            <div>
+              <label for="set-feedback">Umpan balik</label>
+              <select id="set-feedback" aria-describedby="feedback-hint">
+                <option value="off">Mati</option>
+                <option value="errors">Hanya saat salah</option>
+                <option value="all">Benar dan salah</option>
+              </select>
+              <p id="feedback-hint" class="hint">Hanya berlaku saat mode latihan aktif. Saat salah, alasannya ikut ditampilkan.</p>
+            </div>
           </div>
-          <div>
-            <label for="set-frequency">Proporsi angka 3</label>
-            <select id="set-frequency">
-              <option value="0.1">10%</option>
-              <option value="0.2">20%</option>
-              <option value="0.3">30%</option>
-            </select>
-          </div>
-          <div>
-            <label for="set-feedback">Umpan balik saat latihan</label>
-            <select id="set-feedback" aria-describedby="feedback-hint">
-              <option value="off">Mati</option>
-              <option value="errors">Hanya saat salah</option>
-              <option value="all">Benar dan salah</option>
-            </select>
-            <p id="feedback-hint" class="hint">Hanya berlaku saat mode latihan aktif.</p>
-          </div>
-        </div>
-        <label class="check">
-          <input id="set-trial-mode" type="checkbox">
-          <span>Mode latihan: semua tes yang dikerjakan partisipan dicatat sebagai sesi latihan.</span>
-        </label>
-        <label class="check">
-          <input id="set-random-font" type="checkbox">
-          <span>Ukuran angka acak: tiap angka tampil dalam salah satu dari 5 ukuran (40% sampai 100%), seperti SART klasik (Robertson dkk., 1997). Berlaku untuk sesi latihan dan utama.</span>
-        </label>
+        </fieldset>
+
         <div class="form-actions">
           <button type="submit" class="btn-primary">Simpan pengaturan</button>
           <p id="settings-saved" class="status" role="status"></p>
@@ -173,6 +184,109 @@
         <a id="export-sessions" class="btn-primary btn-link" href="/api/admin/export/sessions.csv" download>Unduh ringkasan sesi</a>
         <a id="export-trials" class="btn-secondary btn-link" href="/api/admin/export/trials.csv" download>Unduh data per angka</a>
       </div>
+    </section>
+    <!-- Glossary -->
+    <section class="block" aria-labelledby="glossary-title">
+      <h2 id="glossary-title" tabindex="-1">Penjelasan istilah</h2>
+      <p class="hint">Nama kolom di file CSV ditulis dalam kurung.</p>
+      <dl class="glossary">
+        <div>
+          <dt>Sesi utama dan sesi latihan <code>is_trial</code></dt>
+          <dd>Sesi latihan adalah tes yang dikerjakan saat mode latihan aktif (<code>is_trial = 1</code>). Sesi latihan tidak masuk ringkasan dan grafik, dan disembunyikan di tabel serta CSV kecuali dicentang.</dd>
+        </div>
+        <div>
+          <dt>Status <code>status</code></dt>
+          <dd>"Selesai" (<code>completed</code>): semua angka sudah tampil. "Dihentikan" (<code>aborted</code>): partisipan menekan Akhiri tes. Angka yang sudah dikerjakan tetap disimpan.</dd>
+        </div>
+        <div>
+          <dt>Percobaan ke- <code>attempt_no</code></dt>
+          <dd>Urutan sesi untuk ID partisipan yang sama, dihitung terpisah untuk sesi latihan dan sesi utama. ID dicocokkan tanpa memperhatikan huruf besar kecil dan spasi di awal atau akhir.</dd>
+        </div>
+        <div>
+          <dt>Partisipan, sesi utama, dipakai di ringkasan</dt>
+          <dd>Partisipan: jumlah ID berbeda di sesi utama. Sesi utama: jumlah semua sesi utama, termasuk yang dihentikan. Dipakai di ringkasan: jumlah sesi yang dipakai untuk rata-rata dan grafik, yaitu sesi utama lengkap terakhir dari tiap partisipan.</dd>
+        </div>
+        <div>
+          <dt>n</dt>
+          <dd>Jumlah sesi yang punya nilai untuk metrik itu. Bisa lebih kecil dari jumlah sesi, misalnya RT tidak ada jika partisipan tidak pernah menekan.</dd>
+        </div>
+        <div>
+          <dt>Angka <code>trials_completed</code> / <code>total_trials</code></dt>
+          <dd>Jumlah angka yang sudah tampil dibanding jumlah angka yang direncanakan per sesi.</dd>
+        </div>
+        <div>
+          <dt>Hit (respons tepat) <code>correct_hits</code></dt>
+          <dd>Menekan saat angka selain 3 muncul.</dd>
+        </div>
+        <div>
+          <dt>Kesalahan komisi <code>commission_errors</code></dt>
+          <dd>Menekan saat angka 3 muncul. Menunjukkan gagal menahan respons.</dd>
+        </div>
+        <div>
+          <dt>Kesalahan omisi <code>omission_errors</code></dt>
+          <dd>Tidak menekan saat angka selain 3 muncul. Sering menunjukkan perhatian yang lepas.</dd>
+        </div>
+        <div>
+          <dt>Menahan dengan benar <code>correct_withholds</code></dt>
+          <dd>Tidak menekan saat angka 3 muncul. Tidak tampil di tabel, tetapi ada di CSV dan dipakai untuk akurasi.</dd>
+        </div>
+        <div>
+          <dt>Akurasi <code>accuracy</code></dt>
+          <dd>(Hit + menahan dengan benar) dibagi jumlah angka yang sudah tampil, dikali 100 dan dibulatkan. Untuk sesi yang dihentikan, hanya angka yang sudah tampil yang dihitung.</dd>
+        </div>
+        <div>
+          <dt>RT (waktu reaksi) <code>rt_ms</code></dt>
+          <dd>Waktu dalam milidetik dari munculnya angka sampai tekanan pertama. Tekanan dihitung selama angka tampil ditambah 200 ms layar kosong setelahnya. Angka yang tidak ditekan tidak punya RT.</dd>
+        </div>
+        <div>
+          <dt>RT rata-rata <code>mean_rt_ms</code></dt>
+          <dd>Rata-rata RT pada hit saja, tanpa antisipasi.</dd>
+        </div>
+        <div>
+          <dt>SD RT <code>sd_rt_ms</code></dt>
+          <dd>Simpangan baku sampel (dibagi n - 1) dari RT yang sama. Butuh minimal 2 hit.</dd>
+        </div>
+        <div>
+          <dt>CV RT <code>rt_cv</code></dt>
+          <dd>SD RT dibagi RT rata-rata. Makin tinggi, makin tidak stabil kecepatan responsnya. Ini ukuran variabilitas perhatian yang bisa dibandingkan antarorang meski kecepatannya berbeda.</dd>
+        </div>
+        <div>
+          <dt>Tingkat komisi <code>commission_rate</code></dt>
+          <dd>Kesalahan komisi dibagi jumlah angka 3 yang tampil.</dd>
+        </div>
+        <div>
+          <dt>Tingkat omisi <code>omission_rate</code></dt>
+          <dd>Kesalahan omisi dibagi jumlah angka selain 3 yang tampil.</dd>
+        </div>
+        <div>
+          <dt>Antisipasi <code>anticipation_count</code></dt>
+          <dd>Tekanan pertama kurang dari 100 ms setelah angka muncul, di angka mana pun. Terlalu cepat untuk menjadi reaksi terhadap angka itu, jadi kemungkinan tebakan atau tekanan terlambat dari angka sebelumnya. Tetap dihitung seperti biasa untuk hit, komisi, omisi dan akurasi, tetapi tidak dipakai untuk RT rata-rata, SD RT dan CV RT.</dd>
+        </div>
+        <div>
+          <dt>Tekanan tambahan <code>extra_presses</code></dt>
+          <dd>Tekanan setelah tekanan pertama pada angka yang sama. Hanya tekanan pertama yang dinilai. Ada di CSV per angka.</dd>
+        </div>
+        <div>
+          <dt>Tab ditinggal <code>tab_hidden_count</code></dt>
+          <dd>Berapa kali partisipan pindah ke tab atau jendela lain selama tes. Tes tetap berjalan, jadi angka yang tampil saat itu kemungkinan terlewat. Sesi dengan nilai di atas 0 ditandai.</dd>
+        </div>
+        <div>
+          <dt>Input <code>input_type</code></dt>
+          <dd>Cara partisipan merespons: keyboard (spasi), touch (ketuk layar), mixed (keduanya dalam satu sesi) atau none (tidak pernah menekan).</dd>
+        </div>
+        <div>
+          <dt>Ukuran angka <code>random_font_size</code>, <code>font_size_pt</code></dt>
+          <dd>Jika ukuran angka acak aktif, tiap angka tampil dalam ukuran 48, 72, 94, 100 atau 120 pt (ukuran dari Robertson dkk., 1997). 120 pt adalah ukuran normal, yang lain diperkecil sebanding.</dd>
+        </div>
+        <div>
+          <dt>Umpan balik <code>feedback_mode</code></dt>
+          <dd>Pengaturan umpan balik yang berlaku saat sesi disimpan: off, errors (hanya saat salah) atau all (benar dan salah). Selalu off untuk sesi utama. Saat umpan balik tampil, angka berikutnya muncul 1 detik lebih lambat.</dd>
+        </div>
+        <div>
+          <dt>Waktu (WIB)</dt>
+          <dd>Waktu sesi disimpan, dalam Waktu Indonesia Barat. Di database disimpan dalam UTC.</dd>
+        </div>
+      </dl>
     </section>
   </main>
 </body>
