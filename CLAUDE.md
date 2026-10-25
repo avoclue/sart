@@ -10,7 +10,7 @@ identity form (no login), take the test, and the result is saved. Test settings
 are admin-only.
 
 The design and open decisions are in `PLAN.md`. Read it before you change anything.
-The project is still in the planning stage, so no code exists yet. Build only after the user says "start".
+Building has started (engine and backend first). `DESIGN.md` holds the UI direction.
 
 ## Principles
 

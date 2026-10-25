@@ -1,6 +1,6 @@
 # SART — Implementation Plan
 
-Status: **ready to build once the user says "start".** Decisions are in §3 and §9. Open items are in §8.
+Status: **building.** Engine and backend are done; participant UI and admin UI wait on design direction (`DESIGN.md`). Decisions are in §3 and §9. Open items are in §8.
 
 ## 1. Goal
 
@@ -64,7 +64,7 @@ once at the end of that window. Metric definitions stay the same.
 
 | # | Topic | Decision |
 |---|---|---|
-| 1 | Backend | **Cloudflare Pages + Pages Functions + D1 (SQLite).** Everything is deployed on Cloudflare. A simple admin page with export is needed. |
+| 1 | Backend | **Cloudflare Workers with Static Assets + D1 (SQLite).** Everything is deployed on Cloudflare. A simple admin page with export is needed. (Changed from Pages + Pages Functions on 2026-10-25, see §4.) |
 | 2 | Identity form | **Name + participant ID**, both required. More fields are still being discussed. |
 | 3 | Purpose | **Research.** A consent checkbox is required before the test starts. The consent text will come from the research team; a placeholder is used until then. |
 | 4 | Settings | Same options and defaults as the reference (§2). |
@@ -81,17 +81,20 @@ once at the end of that window. Metric definitions stay the same.
 
 ## 4. Architecture
 
-### Chosen: everything on Cloudflare (Pages + Pages Functions + D1)
+### Chosen: everything on Cloudflare (Workers with Static Assets + D1)
 
 ```
-Browser ── static HTML/JS (Cloudflare Pages)
+Browser ── static HTML/JS (Worker static assets, public/)
    │ GET  /api/settings           → D1 table settings
    │ POST /api/results            → D1 tables sessions + trials
    │ /admin  (password protected) → view/edit settings, list results, CSV export
 ```
 
 - **Frontend:** plain HTML, CSS and vanilla JS, with no build step.
-- **API:** a few small Pages Functions (JS) with no framework.
+- **API:** one Worker (`src/worker.js`, no framework). It runs first on `/api/*` and `/admin*`;
+  every other path is served straight from `public/`.
+- **Why Workers, not Pages:** Cloudflare now recommends Workers with Static Assets for new
+  projects and puts new features there. Free tier, D1 and Git deploys (Workers Builds) are the same.
 - **DB:** Cloudflare D1 (SQLite). The free tier (5 GB, 100k writes/day) is far more than
   30 participants need. Unlike Supabase's free tier, it does not pause when it isn't used.
 - **Admin auth:** one admin password stored as a Cloudflare secret and checked by
@@ -147,7 +150,7 @@ Aborted sessions are saved with `status = aborted`.
 
 ## 7. Implementation steps
 
-1. Scaffold: `public/` (index, admin, js, css), `functions/api/…`, `schema.sql`,
+1. Scaffold: `public/` (index, admin, js, css), `src/worker.js`, `migrations/`,
    `wrangler.toml`, `README.md`.
 2. SART engine as pure functions: sequence generation, trial state machine,
    scoring (every trial scored once), RT metrics. Unit tests with `node --test`.
@@ -158,15 +161,14 @@ Aborted sessions are saved with `status = aborted`.
 5. Admin: login, settings form (including the trial-mode switch), dashboard (§6),
    and two CSV exports (sessions summary and trial-level data; trial-mode sessions
    excluded unless the admin includes them).
-6. Local development: `wrangler pages dev` with a local D1 database (SQLite file
+6. Local development: `wrangler dev` with a local D1 database (SQLite file
    under `.wrangler/`, git-ignored). Schema changes go through `wrangler d1 migrations`.
 7. Deploy guide: create the remote D1 database, apply migrations with `--remote`, set
-   `ADMIN_PASSWORD`, connect the repo to Pages.
+   `ADMIN_PASSWORD`, deploy with `wrangler deploy` or connect the repo with Workers Builds.
 
 ## 8. Open items
 
-- **Do not start building until the user says "start"** and has confirmed §9.
-- Before building, check Cloudflare's current guidance on Pages vs Workers static assets for new projects.
+- Design dials (ENERGY / RHYTHM / MOTION), final blue and yellow hex codes, study title and logo (`DESIGN.md`).
 - R8: whether to add a classic Robertson et al. (1997) preset (250 ms digit + 900 ms mask,
   225 trials, about 11% targets, random font sizes) for comparison with published norms.
 - Consent text (from the research team).
@@ -188,3 +190,7 @@ Aborted sessions are saved with `status = aborted`.
 | D10 | Deleting data | **Not included for now.** |
 | D11 | Fullscreen | Not forced. |
 | D12 | Dashboard "participants" | Count of distinct participant IDs (normalised as in D4). |
+| D13 | RT standard deviation | Sample SD (divide by n − 1), matching R, SPSS and pandas, so the dashboard agrees with analysis of the CSV. Mean RT needs at least 1 correct hit and SD needs at least 2; otherwise they are empty. Rates with a zero denominator are empty too. |
+| D14 | Aborted sessions | Accuracy and rates use the trials actually completed. Unshown trials are not omissions. `trials_completed` and the planned `total_trials` are both stored. |
+| D15 | Anticipation count | Any first press under 100 ms after digit onset, on every trial (3s included). |
+| D16 | Server-side scoring | The server rebuilds each trial's outcome from its digit and press, and recomputes every summary metric with the same engine module. Numbers sent by the browser are never stored. It also rejects settings outside the allowed options, a wrong number of 3s, and RTs outside the response window. |
