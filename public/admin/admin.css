@@ -216,3 +216,9 @@ fieldset .settings-grid { grid-template-columns: repeat(auto-fill, minmax(13rem,
   border-radius: var(--radius-control);
   font-size: 0.95rem;
 }
+
+/* A field label with a "?" toggletip next to it. The button keeps its 44px hit area but
+   overlaps the line above and below, so this field lines up with its neighbours. */
+.label-row { display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.35rem; }
+.label-row label { margin-bottom: 0; }
+.label-row .help { margin: -11px 0; }

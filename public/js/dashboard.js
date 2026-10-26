@@ -2,7 +2,7 @@
 
 export const METRIC_KEYS = [
   'accuracy', 'correct_hits', 'commission_errors', 'omission_errors', 'mean_rt_ms', 'sd_rt_ms',
-  'rt_cv', 'commission_rate', 'omission_rate', 'anticipation_count',
+  'rt_cv', 'commission_rate', 'omission_rate', 'anticipation_count', 'early_count',
 ];
 
 const isReal = (s) => s.is_trial === 0;

@@ -1,7 +1,7 @@
 // Admin page: settings form, overview, session table, session detail and CSV links.
 
 import { API_BASE } from '../js/config.js';
-import { settingsProblem } from '../js/sart.js';
+import { adminSettingsProblem } from '../js/sart.js';
 import {
   participantCount, realSessionCount, latestCompletedPerParticipant, metricMeans,
   filterSessions, sortSessions,
@@ -12,6 +12,7 @@ const BLUE = '#093697';
 const RED = '#a3261b';
 const INK = '#1d2433';
 const GREEN = '#1e7a3c';
+const ORANGE = '#b45309';
 
 let sessions = [];
 let sort = { key: 'created_at', direction: 'desc' };
@@ -60,7 +61,20 @@ const settingFields = {
   totalTrials: { el: () => $('set-trials'), parse: parseWhole, format: String },
   targetFrequency: { el: () => $('set-frequency'), parse: parsePercent, format: formatPercent },
   feedbackMode: { el: () => $('set-feedback'), parse: String, format: String },
+  maskMs: { el: () => $('set-mask'), parse: Number, format: String },
+  responseMode: { el: () => $('set-response-mode'), parse: String, format: String },
+  practiceSessions: { el: () => $('set-practice-sessions'), parse: parseWhole, format: String },
+  practiceTrials: { el: () => $('set-practice-trials'), parse: parseWhole, format: String },
 };
+// Which field a settings problem is about, so the cursor can go there.
+// The first match wins, so the more specific practice-length pattern comes first.
+const PROBLEM_FIELDS = [
+  [/angka per sesi latihan|jumlah angka latihan/, 'set-practice-trials'],
+  [/Jumlah sesi latihan|minimal 1 sesi latihan/, 'set-practice-sessions'],
+  [/Jumlah angka/, 'set-trials'],
+  [/Proporsi|tidak ada angka 3/, 'set-frequency'],
+  [/Tunggu mask/, 'set-response-mode'],
+];
 const settingChecks = { trialMode: 'set-trial-mode', randomFontSize: 'set-random-font', balancedDigits: 'set-balanced' };
 
 function fillSettings(s) {
@@ -89,10 +103,10 @@ $('settings-form').addEventListener('submit', async (event) => {
   for (const [key, id] of Object.entries(settingChecks)) body[key] = $(id).checked;
   for (const [key, field] of Object.entries(settingFields)) body[key] = field.parse(field.el().value);
   const saved = $('settings-saved');
-  const problem = settingsProblem(body);
-  for (const id of ['set-trials', 'set-frequency']) $(id).removeAttribute('aria-invalid');
+  const problem = adminSettingsProblem(body);
+  for (const [, id] of PROBLEM_FIELDS) $(id).removeAttribute('aria-invalid');
   if (problem) {
-    const field = /Jumlah angka/.test(problem) ? 'set-trials' : /Proporsi|tidak ada angka 3/.test(problem) ? 'set-frequency' : null;
+    const field = PROBLEM_FIELDS.find(([pattern]) => pattern.test(problem))?.[1];
     if (field) {
       $(field).setAttribute('aria-invalid', 'true');
       $(field).focus();
@@ -154,6 +168,7 @@ const MEAN_ROWS = [
   ['commission_rate', 'Tingkat komisi', percent],
   ['omission_rate', 'Tingkat omisi', percent],
   ['anticipation_count', 'Antisipasi (< 100 ms)', (v) => number(v, 1)],
+  ['early_count', 'Terlalu cepat (sebelum mask)', (v) => number(v, 1)],
 ];
 
 function chartsAvailable() {
@@ -223,12 +238,15 @@ function renderOverview() {
 
 // Sessions table
 
+// "Latihan 2" for a practice session of the visit flow, "Latihan" for an older one.
+const sessionKindLabel = (s) => (s.is_trial ? `Latihan${s.practice_no ? ` ${s.practice_no}` : ''}` : 'Utama');
+
 const COLUMNS = [
   ['created_at', 'Waktu (WIB)', (s) => wib.format(new Date(s.created_at))],
   ['participant_name', 'Nama', (s) => s.participant_name],
   ['participant_id', 'ID', (s) => s.participant_id_raw],
   ['attempt_no', 'Ke-', (s) => s.attempt_no, true],
-  ['is_trial', 'Jenis', (s) => (s.is_trial ? 'Latihan' : 'Utama')],
+  ['is_trial', 'Jenis', (s) => sessionKindLabel(s)],
   ['status', 'Status', (s) => (s.status === 'completed' ? 'Selesai' : 'Dihentikan')],
   ['trials_completed', 'Angka', (s) => `${s.trials_completed} / ${s.total_trials}`, true],
   ['accuracy', 'Akurasi', (s) => (s.accuracy === null ? '' : `${s.accuracy}%`), true],
@@ -239,6 +257,7 @@ const COLUMNS = [
   ['sd_rt_ms', 'SD RT (ms)', (s) => number(s.sd_rt_ms), true],
   ['rt_cv', 'CV RT', (s) => number(s.rt_cv, 3), true],
   ['anticipation_count', 'Antisipasi', (s) => s.anticipation_count, true],
+  ['early_count', 'Terlalu cepat', (s) => s.early_count, true],
   ['tab_hidden_count', 'Tab ditinggal', null, true],
   ['input_type', 'Input', (s) => s.input_type],
 ];
@@ -332,10 +351,11 @@ async function openDetail(s) {
   const detail = $('detail');
   detail.hidden = false;
   $('detail-title').textContent = `Detail sesi ${s.participant_id_raw}, percobaan ke-${s.attempt_no}`;
-  $('detail-summary').textContent = `${s.participant_name}. ${s.is_trial ? 'Latihan' : 'Utama'}, `
+  $('detail-summary').textContent = `${s.participant_name}. ${sessionKindLabel(s)}, `
     + `${s.status === 'completed' ? 'selesai' : 'dihentikan'}. Pengaturan: ${s.display_duration_ms} ms, `
     + `${s.total_trials} angka, ${formatPercent(s.target_frequency)}% angka 3, `
-    + `ukuran angka ${s.random_font_size ? 'acak' : 'tetap'}, angka ${s.balanced_digits ? 'seimbang' : 'tidak seimbang'}.`;
+    + `ukuran angka ${s.random_font_size ? 'acak' : 'tetap'}, angka ${s.balanced_digits ? 'seimbang' : 'tidak seimbang'}, `
+    + `${s.mask_ms ? `mask ${s.mask_ms} ms` : 'tanpa mask'}, mode respons ${s.response_mode === 'wait_mask' ? 'Tunggu mask' : 'Klasik'}.`;
   $('detail-status').className = 'status';
   $('detail-status').textContent = 'Memuat data per angka...';
   $('detail-status').hidden = false;
@@ -360,10 +380,16 @@ async function openDetail(s) {
   }
   $('detail-status').hidden = true;
   $('detail-figure').hidden = false;
-  // The y-axis spans the whole response window. Misses and correct withholds have no RT,
-  // so they sit in a band below 0 ms where they cannot be mistaken for very fast presses.
-  const windowMs = s.display_duration_ms + 200;
-  const missRow = -0.06 * windowMs;
+  // The y-axis spans the whole response window, measured from the cue: the digit in classic
+  // mode (0 to digit + mask or blank), the mask in 'wait_mask' mode (-digit to mask), where
+  // early presses are negative. Misses and correct withholds have no RT, so they sit in a
+  // band below the axis where they cannot be mistaken for real presses.
+  const after = s.mask_ms > 0 ? s.mask_ms : 200;
+  const waitMask = s.response_mode === 'wait_mask';
+  const yLow = waitMask ? -s.display_duration_ms : 0;
+  const yHigh = waitMask ? after : s.display_duration_ms + after;
+  const band = 0.06 * (yHigh - yLow);
+  const missRow = yLow - band;
   const points = (outcome) => trials.filter((t) => t.outcome === outcome)
     .map((t) => ({ x: t.trial_no, y: t.rt_ms ?? missRow }));
   replaceChart('rt', $('chart-rt'), {
@@ -375,6 +401,8 @@ async function openDetail(s) {
         { label: 'Terlewat (tanpa RT)', data: points('omission'), borderColor: INK, backgroundColor: INK, borderWidth: 2, pointStyle: 'crossRot', pointRadius: 6, clip: false },
         // A ring, not a filled dot, so it differs from hits by shape as well as colour.
         { label: 'Menahan 3 dengan benar (tanpa RT)', data: points('withhold'), borderColor: GREEN, backgroundColor: 'transparent', borderWidth: 2.5, pointStyle: 'circle', pointRadius: 5, clip: false },
+        // Only in 'wait_mask' mode: a diamond, so it differs from hits by shape as well as colour.
+        ...(waitMask ? [{ label: 'Terlalu cepat (sebelum mask)', data: points('early'), backgroundColor: ORANGE, pointStyle: 'rectRot', pointRadius: 6, clip: false }] : []),
       ],
     },
     options: {
@@ -389,6 +417,7 @@ async function openDetail(s) {
             label: (c) => {
               if (c.datasetIndex === 2) return `Angka ke-${c.raw.x}: terlewat`;
               if (c.datasetIndex === 3) return `Angka ke-${c.raw.x}: angka 3, ditahan dengan benar`;
+              if (c.datasetIndex === 4) return `Angka ke-${c.raw.x}: terlalu cepat, ${number(-c.raw.y)} ms sebelum mask`;
               return `Angka ke-${c.raw.x}: ${number(c.raw.y)} ms`;
             },
           },
@@ -397,11 +426,11 @@ async function openDetail(s) {
       scales: {
         x: { min: 1, max: s.total_trials, title: { display: true, text: 'Angka ke-', color: INK }, ticks: { color: INK } },
         y: {
-          min: 2 * missRow,
-          max: windowMs,
-          title: { display: true, text: 'RT (ms)', color: INK },
-          // No negative tick labels: the band below 0 only holds trials without an RT.
-          ticks: { color: INK, callback: (v) => (v < 0 ? '' : v) },
+          min: yLow - 2 * band,
+          max: yHigh,
+          title: { display: true, text: waitMask ? 'RT dari munculnya mask (ms)' : 'RT (ms)', color: INK },
+          // No tick labels in the band below the axis: it only holds trials without an RT.
+          ticks: { color: INK, callback: (v) => (v < yLow ? '' : v) },
         },
       },
     },

@@ -47,7 +47,31 @@
                 <span aria-hidden="true">%</span>
               </div>
             </div>
+            <div>
+              <div class="label-row">
+                <label for="set-mask">Mask setelah angka</label>
+                <button type="button" class="help" aria-expanded="false" aria-controls="tip-mask" aria-label="Penjelasan mask"><span aria-hidden="true">?</span></button>
+              </div>
+              <select id="set-mask">
+                <option value="0">Mati</option>
+                <option value="500">500 ms</option>
+                <option value="900">900 ms (klasik)</option>
+                <option value="1150">1150 ms</option>
+              </select>
+            </div>
+            <div>
+              <div class="label-row">
+                <label for="set-response-mode">Mode respons</label>
+                <button type="button" class="help" aria-expanded="false" aria-controls="tip-response-mode" aria-label="Penjelasan mode respons"><span aria-hidden="true">?</span></button>
+              </div>
+              <select id="set-response-mode">
+                <option value="classic">Klasik</option>
+                <option value="wait_mask">Tunggu mask</option>
+              </select>
+            </div>
           </div>
+          <p id="tip-mask" class="tip" role="status" hidden>Setelah tiap angka tampil simbol ⊗ selama waktu ini, lalu angka berikutnya. Jika Mati, angka diikuti layar kosong 200 ms. SART klasik memakai angka 250 ms dan mask 900 ms.</p>
+          <p id="tip-response-mode" class="tip" role="status" hidden>Klasik: tekanan dihitung saat angka atau mask tampil, dan RT diukur dari munculnya angka. Tunggu mask: partisipan harus menunggu simbol ⊗; tekanan saat angka masih tampil dihitung "terlalu cepat", dan RT diukur dari munculnya mask. Tunggu mask bukan prosedur SART klasik dan butuh mask.</p>
           <div class="check-row">
             <label class="check">
               <input id="set-random-font" type="checkbox">
@@ -67,12 +91,16 @@
         </fieldset>
 
         <fieldset>
-          <legend>Mode latihan</legend>
-          <label class="check">
-            <input id="set-trial-mode" type="checkbox">
-            <span>Aktifkan mode latihan</span>
-          </label>
+          <legend>Latihan</legend>
           <div class="settings-grid">
+            <div>
+              <label for="set-practice-sessions">Jumlah sesi latihan</label>
+              <input id="set-practice-sessions" type="text" inputmode="numeric" autocomplete="off">
+            </div>
+            <div>
+              <label for="set-practice-trials">Jumlah angka per sesi latihan</label>
+              <input id="set-practice-trials" type="text" inputmode="numeric" autocomplete="off">
+            </div>
             <div>
               <label for="set-feedback">Umpan balik</label>
               <select id="set-feedback" aria-describedby="feedback-hint">
@@ -82,7 +110,15 @@
               </select>
             </div>
           </div>
-          <p id="feedback-hint" class="hint field-hint">Hanya berlaku saat mode latihan aktif. Tampilkan feedback untuk setiap angka</p>
+          <p id="feedback-hint" class="hint field-hint">Hanya berlaku pada sesi latihan. Tampilkan feedback untuk setiap angka</p>
+          <div class="check-row">
+            <label class="check">
+              <input id="set-trial-mode" type="checkbox">
+              <span>Aktifkan mode latihan</span>
+            </label>
+            <button type="button" class="help" aria-expanded="false" aria-controls="tip-trial-mode" aria-label="Penjelasan mode latihan"><span aria-hidden="true">?</span></button>
+            <p id="tip-trial-mode" class="tip" role="status" hidden>Selama aktif, partisipan hanya bisa mengerjakan sesi latihan (sampai jumlah sesi latihan di atas); sesi utama tidak ditawarkan. Butuh minimal 1 sesi latihan.</p>
+          </div>
         </fieldset>
 
         <div class="form-actions">
@@ -195,7 +231,15 @@
       <dl class="glossary">
         <div>
           <dt>Sesi utama dan sesi latihan <code>is_trial</code></dt>
-          <dd>Sesi latihan adalah tes yang dikerjakan saat mode latihan aktif (<code>is_trial = 1</code>). Sesi latihan tidak masuk ringkasan dan grafik, dan disembunyikan di tabel serta CSV kecuali dicentang.</dd>
+          <dd>Setiap kunjungan dimulai dengan sesi latihan (sampai jumlah sesi latihan yang diatur), lalu sesi utama. Sesi latihan disimpan dengan <code>is_trial = 1</code>. Sesi latihan tidak masuk ringkasan dan grafik, dan disembunyikan di tabel serta CSV kecuali dicentang.</dd>
+        </div>
+        <div>
+          <dt>Latihan ke- <code>practice_no</code></dt>
+          <dd>Urutan sesi latihan dalam satu kunjungan: 1, 2, 3 dan seterusnya. Kosong untuk sesi utama dan untuk sesi lama sebelum alur latihan ada.</dd>
+        </div>
+        <div>
+          <dt>Kunjungan <code>visit_id</code></dt>
+          <dd>Kode yang sama untuk semua sesi dari satu kali partisipan mengisi formulir, sehingga terlihat latihan mana yang mendahului sesi utama mana. Kosong untuk sesi lama.</dd>
         </div>
         <div>
           <dt>Status <code>status</code></dt>
@@ -203,7 +247,7 @@
         </div>
         <div>
           <dt>Percobaan ke- <code>attempt_no</code></dt>
-          <dd>Urutan sesi untuk ID partisipan yang sama, dihitung terpisah untuk sesi latihan dan sesi utama. ID dicocokkan tanpa memperhatikan huruf besar kecil dan spasi di awal atau akhir.</dd>
+          <dd>Urutan sesi untuk ID partisipan yang sama, dihitung terpisah untuk sesi latihan dan sesi utama, di semua kunjungan. ID dicocokkan tanpa memperhatikan huruf besar kecil dan spasi di awal atau akhir.</dd>
         </div>
         <div>
           <dt>Partisipan, sesi utama, dipakai di ringkasan</dt>
@@ -239,7 +283,7 @@
         </div>
         <div>
           <dt>RT (waktu reaksi) <code>rt_ms</code></dt>
-          <dd>Waktu dalam milidetik dari munculnya angka sampai tekanan pertama. Tekanan dihitung selama angka tampil ditambah 200 ms layar kosong setelahnya. Angka yang tidak ditekan tidak punya RT.</dd>
+          <dd>Waktu dalam milidetik sampai tekanan pertama. Pada mode respons Klasik, diukur dari munculnya angka. Pada mode Tunggu mask, diukur dari munculnya mask, sehingga tekanan saat angka masih tampil bernilai negatif. Tekanan dihitung selama angka tampil ditambah mask (atau 200 ms layar kosong jika tanpa mask). Angka yang tidak ditekan tidak punya RT.</dd>
         </div>
         <div>
           <dt>RT rata-rata <code>mean_rt_ms</code></dt>
@@ -287,7 +331,19 @@
         </div>
         <div>
           <dt>Umpan balik <code>feedback_mode</code></dt>
-          <dd>Pengaturan umpan balik yang berlaku saat sesi disimpan: off, errors (hanya saat salah) atau all (benar dan salah). Selalu off untuk sesi utama. Saat umpan balik tampil, angka berikutnya muncul 1 detik lebih lambat.</dd>
+          <dd>Pengaturan umpan balik yang berlaku saat sesi latihan disimpan: off, errors (hanya saat salah) atau all (benar dan salah). Selalu off untuk sesi utama. Saat umpan balik tampil, angka berikutnya muncul 1 detik lebih lambat.</dd>
+        </div>
+        <div>
+          <dt>Mask <code>mask_ms</code></dt>
+          <dd>Lama simbol ⊗ (lingkaran dengan silang) tampil setelah tiap angka, dalam milidetik; 0 berarti tanpa mask (angka diikuti layar kosong 200 ms). SART klasik memakai 900 ms setelah angka 250 ms. Ukuran mask selalu sama, tidak ikut ukuran angka acak.</dd>
+        </div>
+        <div>
+          <dt>Mode respons <code>response_mode</code></dt>
+          <dd><code>classic</code> (Klasik): tekanan saat angka atau mask tampil sama-sama dihitung, seperti SART klasik dan tes rujukan. <code>wait_mask</code> (Tunggu mask): partisipan harus menunggu mask sebelum menekan. Ini varian, bukan prosedur SART klasik, jadi hasilnya tidak bisa dibandingkan langsung dengan norma SART yang dipublikasikan atau dengan sesi Klasik.</dd>
+        </div>
+        <div>
+          <dt>Terlalu cepat <code>early_count</code></dt>
+          <dd>Hanya pada mode Tunggu mask: jumlah angka selain 3 yang ditekan saat angkanya masih tampil, sebelum mask. Tekanan pertama yang menentukan, jadi tekanan berikutnya saat mask tidak membuatnya benar. Terlalu cepat menurunkan akurasi, tetapi bukan omisi dan bukan antisipasi. Tidak ditampilkan ke partisipan.</dd>
         </div>
         <div>
           <dt>Waktu (WIB)</dt>
