@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {
   TARGET_DIGIT, targetCount, generateSequence, responseWindowMs,
   createTrial, registerPress, scoreTrial, summarize,
-  feedbackFor, estimateMinutes, combineInputTypes, settingsProblem, balancedCounts, NON_TARGET_DIGITS, FONT_SIZES_PT, generateFontSizes, fontScale,
+  feedbackFor, estimateMinutes, combineInputTypes, settingsProblem, balancedCounts, NON_TARGET_DIGITS,
+  adminSettingsProblem, practiceChoices, afterDigitMs, cueOffsetMs, outcomeOf, isAnticipation, FONT_SIZES_PT, generateFontSizes, fontScale,
 } from '../public/js/sart.js';
 
 function seededRandom(seed) {
@@ -48,8 +49,13 @@ test('generateSequence shuffles the targets', () => {
   assert.notDeepEqual(seq.slice(0, 20), Array(20).fill(TARGET_DIGIT));
 });
 
-test('response window is display plus 200 ms blank', () => {
+test('response window is the digit plus the blank, or plus the mask when there is one', () => {
   assert.equal(responseWindowMs(250), 450);
+  assert.equal(responseWindowMs(250, 0), 450);
+  assert.equal(responseWindowMs(250, 900), 1150);
+  assert.equal(responseWindowMs(500, 1150), 1650);
+  assert.equal(afterDigitMs(0), 200);
+  assert.equal(afterDigitMs(500), 500);
 });
 
 test('each trial gets exactly one outcome', () => {
@@ -138,10 +144,12 @@ test('feedbackFor follows the feedback mode', () => {
   assert.equal(feedbackFor('omission', 'all'), 'omission');
 });
 
-test('estimateMinutes rounds the test length up', () => {
+test('estimateMinutes rounds the test length up, countdown and mask included', () => {
   assert.equal(estimateMinutes({ displayDurationMs: 500, totalTrials: 100 }), 2);
   assert.equal(estimateMinutes({ displayDurationMs: 250, totalTrials: 50 }), 1);
   assert.equal(estimateMinutes({ displayDurationMs: 750, totalTrials: 200 }), 4);
+  // Classic SART: 3 s countdown + 225 x 1150 ms = 261.75 s
+  assert.equal(estimateMinutes({ displayDurationMs: 250, totalTrials: 225, maskMs: 900 }), 5);
 });
 
 test('combineInputTypes reports none, a single type or mixed', () => {
@@ -210,4 +218,80 @@ test('balancedCounts gives the extras to different digits on different draws', (
 test('balanced sequences are still shuffled', () => {
   const seq = generateSequence(225, 0.111, { balanced: true, random: seededRandom(4) });
   assert.notDeepEqual(seq.slice(0, 25), Array(25).fill(TARGET_DIGIT));
+});
+
+const pressAt = (digit, rtMs, mode) => scoreTrial(registerPress(createTrial(1, digit), rtMs, mode));
+
+test('classic mode: a press during the digit or what follows is a normal response', () => {
+  assert.equal(cueOffsetMs(250, 'classic'), 0);
+  assert.equal(pressAt(5, 120, 'classic').outcome, 'hit');
+  assert.equal(pressAt(5, 900, 'classic').outcome, 'hit');
+  assert.equal(pressAt(3, 120, 'classic').outcome, 'commission');
+});
+
+test('wait_mask mode: RT is from the mask; a non-3 pressed before it is early', () => {
+  assert.equal(cueOffsetMs(250, 'wait_mask'), 250);
+  const early = pressAt(5, -100, 'wait_mask');
+  assert.equal(early.outcome, 'early');
+  assert.equal(early.rtMs, -100);
+  assert.equal(pressAt(5, 0, 'wait_mask').outcome, 'hit');
+  assert.equal(pressAt(5, 400, 'wait_mask').outcome, 'hit');
+  assert.equal(pressAt(3, -100, 'wait_mask').outcome, 'commission');
+  assert.equal(pressAt(3, 400, 'wait_mask').outcome, 'commission');
+  assert.equal(scoreTrial(createTrial(1, 5)).outcome, 'omission');
+  assert.equal(scoreTrial(createTrial(1, 3)).outcome, 'withhold');
+});
+
+test('wait_mask mode: the first press decides, a later press during the mask does not rescue it', () => {
+  let trial = registerPress(createTrial(1, 5), -50, 'wait_mask');
+  trial = registerPress(trial, 300, 'wait_mask');
+  const scored = scoreTrial(trial);
+  assert.equal(scored.outcome, 'early');
+  assert.equal(scored.rtMs, -50);
+  assert.equal(scored.extraPresses, 1);
+});
+
+test('early presses are not anticipations, and they count against accuracy and in the summary', () => {
+  assert.equal(isAnticipation(pressAt(5, -50, 'wait_mask')), false);
+  assert.equal(isAnticipation(pressAt(5, 50, 'wait_mask')), true);
+  const s = summarize([pressAt(5, -50, 'wait_mask'), pressAt(5, 300, 'wait_mask'), scoreTrial(createTrial(1, 3))]);
+  assert.equal(s.earlyCount, 1);
+  assert.equal(s.correctHits, 1);
+  assert.equal(s.omissionErrors, 0);
+  assert.equal(s.accuracy, 67);
+  assert.equal(s.omissionRate, 0);
+  assert.equal(s.meanRtMs, 300);
+  assert.equal(outcomeOf(false, true, true), 'early');
+});
+
+test('feedback for an early press is an error', () => {
+  assert.equal(feedbackFor('early', 'errors'), 'early');
+  assert.equal(feedbackFor('early', 'off'), null);
+});
+
+test('settingsProblem checks the mask and response mode', () => {
+  const ok = { displayDurationMs: 250, totalTrials: 225, targetFrequency: 0.111 };
+  assert.equal(settingsProblem({ ...ok, maskMs: 900, responseMode: 'classic' }), null);
+  assert.equal(settingsProblem({ ...ok, maskMs: 900, responseMode: 'wait_mask' }), null);
+  assert.match(settingsProblem({ ...ok, maskMs: 0, responseMode: 'wait_mask' }), /butuh mask/);
+  assert.match(settingsProblem({ ...ok, maskMs: 800 }), /Mask harus/);
+  assert.match(settingsProblem({ ...ok, responseMode: 'fast' }), /Mode respons/);
+});
+
+test('adminSettingsProblem checks the practice settings', () => {
+  const ok = { displayDurationMs: 250, totalTrials: 225, targetFrequency: 0.111, maskMs: 900,
+    responseMode: 'classic', practiceSessions: 3, practiceTrials: 18, trialMode: false };
+  assert.equal(adminSettingsProblem(ok), null);
+  assert.equal(adminSettingsProblem({ ...ok, practiceSessions: 0 }), null);
+  for (const practiceSessions of [-1, 6, 1.5]) assert.match(adminSettingsProblem({ ...ok, practiceSessions }), /sesi latihan/);
+  for (const practiceTrials of [9, 501, 18.5]) assert.match(adminSettingsProblem({ ...ok, practiceTrials }), /angka per sesi latihan/);
+  assert.match(adminSettingsProblem({ ...ok, practiceTrials: 10, targetFrequency: 0.04 }), /tidak ada angka 3/);
+  assert.match(adminSettingsProblem({ ...ok, trialMode: true, practiceSessions: 0 }), /minimal 1 sesi latihan/);
+});
+
+test('practiceChoices offers another practice until N, and the main session unless in the practice period', () => {
+  assert.deepEqual(practiceChoices({ practiceDone: 1, practiceSessions: 3, trialMode: false }), { practiceAgain: true, startMain: true });
+  assert.deepEqual(practiceChoices({ practiceDone: 3, practiceSessions: 3, trialMode: false }), { practiceAgain: false, startMain: true });
+  assert.deepEqual(practiceChoices({ practiceDone: 2, practiceSessions: 3, trialMode: true }), { practiceAgain: true, startMain: false });
+  assert.deepEqual(practiceChoices({ practiceDone: 3, practiceSessions: 3, trialMode: true }), { practiceAgain: false, startMain: false });
 });
