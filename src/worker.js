@@ -45,7 +45,11 @@ function unauthorized() {
   });
 }
 
+// A cross-site form can only send text/plain, so requiring JSON forces a CORS preflight
+// that the Worker never grants (PLAN.md §9 D39).
 async function readJson(request) {
+  const type = (request.headers.get('Content-Type') ?? '').split(';')[0].trim().toLowerCase();
+  if (type !== 'application/json') throw new ValidationError('Content-Type must be application/json');
   const length = Number(request.headers.get('Content-Length') ?? 0);
   if (length > MAX_BODY_BYTES) throw new ValidationError('body too large');
   const text = await request.text();
@@ -174,9 +178,10 @@ async function postResult(request, env) {
   // Practice sessions of the visit flow are saved as practice (PLAN.md §9 D33). The participant
   // page only offers a main session while the practice period (trial mode) is off; a main
   // session already running when the admin turns it on is kept as a main session.
-  // A set deactivated while this session ran still takes the result; only an unknown code is refused.
+  // An unknown or inactive set is refused, so deactivating a set closes it for results too (D39).
   const current = await findSet(env, r.setCode);
   if (!current) throw new ValidationError('unknown set');
+  if (!current.isActive) return json({ error: 'set inactive' }, 409);
   const isTrial = r.sessionKind === 'practice' ? 1 : 0;
   // Feedback is only shown in practice sessions, so main sessions always store 'off'.
   const feedbackMode = isTrial ? current.feedbackMode : 'off';
@@ -313,14 +318,31 @@ async function route(request, env) {
   return json({ error: 'not found' }, 404);
 }
 
+// Chart.js (admin page only) is the one external script, pinned with an SRI hash.
+const SECURITY_HEADERS = {
+  'Content-Security-Policy': [
+    "default-src 'self'", "script-src 'self' https://cdnjs.cloudflare.com", "style-src 'self'",
+    "img-src 'self' data:", "font-src 'self'", "connect-src 'self'", "object-src 'none'",
+    "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'",
+  ].join('; '),
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
+};
+
+function withSecurityHeaders(response) {
+  const secured = new Response(response.body, response);
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) secured.headers.set(name, value);
+  return secured;
+}
+
 export default {
   async fetch(request, env) {
     try {
-      return await route(request, env);
+      return withSecurityHeaders(await route(request, env));
     } catch (err) {
-      if (err instanceof ValidationError) return json({ error: err.message }, 400);
+      if (err instanceof ValidationError) return withSecurityHeaders(json({ error: err.message }, 400));
       console.error(err);
-      return json({ error: 'internal error' }, 500);
+      return withSecurityHeaders(json({ error: 'internal error' }, 500));
     }
   },
 };

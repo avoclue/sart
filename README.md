@@ -17,7 +17,7 @@ The design is in `PLAN.md`, and the UI direction is in `DESIGN.md`.
 |---|---|---|---|
 | GET | `/api/sets` | none | Active test sets: code and label only |
 | GET | `/api/settings?set=code` | none | One active set's test settings (404 for an unknown or inactive set) |
-| POST | `/api/results` | none | Save a completed or aborted session with its trials |
+| POST | `/api/results` | none | Save a completed or aborted session with its trials (409 if the set is inactive) |
 | GET/POST | `/api/admin/sets` | admin | List test sets with their session counts, or add one |
 | PUT/DELETE | `/api/admin/sets/:id` | admin | Change a set, or delete one no session uses |
 | GET | `/api/admin/sessions` | admin | All sessions (`?include_trial=1` adds trial-mode sessions, `?set=code` keeps one set) |
@@ -64,6 +64,22 @@ Run these on your own computer, from the project folder. Everything stays on the
 5. **Set the admin password:** `npx wrangler secret put ADMIN_PASSWORD`, then type the password.
    It takes effect without another deploy. Until it is set, `/admin/` says the password is missing.
 6. **Check:** open the address, take one test, then open `/admin/` and confirm the session is there.
+
+### Security setup
+
+- **Admin password:** use a long random `ADMIN_PASSWORD` (for example 20+ characters from a
+  password manager). Basic Auth has no lockout, so length is the only protection against guessing.
+- **Rate limit (do after deploy):** `POST /api/results` is public, so one script could use up D1's
+  free write quota. In the Cloudflare dashboard, open the zone's Security > WAF > Rate limiting
+  rules and add a rule for `URI Path equals /api/results` and `Method equals POST`, limiting each IP to
+  a few requests per minute (a real participant sends one or two per visit; a classroom behind
+  one network sends about 30 in total, so do not set it lower than that over the period). Check that
+  your plan includes rate limiting rules; this is not configured in the repo. A `workers.dev`
+  address has no zone, so this rule needs the custom subdomain.
+- **Closing a set:** an inactive set refuses results as well as links. Do not deactivate a set
+  while anyone is still taking the test.
+- **Forged results are an accepted risk:** anyone with the link can post a result under any
+  participant ID (`PLAN.md` §9 D39). Review the data for odd sessions before analysis.
 
 ### Later updates
 

@@ -428,18 +428,24 @@ async function saveResult() {
   show('screen-saving');
   $('saving-status').hidden = false;
   $('saving-error').hidden = true;
+  let closed = false;
   try {
     const response = await fetch(`${API_BASE}/api/results`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(pendingResult.body),
     });
+    // 409: the set was deactivated, so retrying cannot help (PLAN.md §9 D39).
+    closed = response.status === 409;
     if (!response.ok) throw new Error(`HTTP ${response.status}: ${await response.text()}`);
   } catch (err) {
     console.error(err);
     $('saving-status').hidden = true;
     $('saving-error').hidden = false;
-    $('saving-retry').focus();
+    $('saving-error-network').hidden = closed;
+    $('saving-error-closed').hidden = !closed;
+    $('saving-retry').hidden = closed;
+    if (!closed) $('saving-retry').focus();
     return;
   }
 

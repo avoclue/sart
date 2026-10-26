@@ -1,0 +1,6 @@
+# Static files skip the Worker, so they get the same headers here. Keep in sync with
+# SECURITY_HEADERS in src/worker.js (PLAN.md §9 D39).
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer

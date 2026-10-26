@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateResult, validateAdminSettings, validateSet, ValidationError } from '../src/validate.js';
-import { toCsv, toWib } from '../src/csv.js';
+import { toCsv, toWib, neutralise, SESSION_COLUMNS } from '../src/csv.js';
 
 function trialsFor(digits, rtMs = 300) {
   return digits.map((digit, i) => ({
@@ -200,4 +200,22 @@ test('session start and duration are optional but checked when sent', () => {
   assert.throws(() => validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z', durationMs: -1 })), ValidationError);
   assert.throws(() => validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z', durationMs: 1.5 })), ValidationError);
   assert.throws(() => validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z', durationMs: 90_000_000 })), ValidationError);
+});
+
+test('neutralise makes formula-like text plain text and leaves other values alone', () => {
+  for (const text of ['=1+1', '+1', '-1', '@SUM(A1)', '\tx', '\rx']) assert.equal(neutralise(text), `'${text}`);
+  assert.equal(neutralise('Budi'), 'Budi');
+  assert.equal(neutralise(-35), -35);
+  assert.equal(neutralise(null), null);
+});
+
+test('session CSV neutralises participant text but not numbers', () => {
+  const row = { participant_name: '=HYPERLINK("x")', participant_id_raw: '+1', participant_id: '+1', user_agent: '@x', set_code: 'a', attempt_no: -1 };
+  const out = toCsv(SESSION_COLUMNS, [row]).split('\r\n')[1].split(',');
+  const header = toCsv(SESSION_COLUMNS, []).trim().split(',');
+  const at = (key) => out[header.indexOf(key)];
+  assert.equal(at('participant_id'), "'+1");
+  assert.equal(at('user_agent'), "'@x");
+  assert.equal(at('attempt_no'), '-1');
+  assert.match(toCsv(SESSION_COLUMNS, [row]), /"'=HYPERLINK\(""x""\)"/);
 });
