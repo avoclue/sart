@@ -14,6 +14,9 @@ export const FEEDBACK_MODES = ['off', 'errors', 'all'];
 // Robertson et al. (1997) font sizes in pt. On screen, 120 pt is the normal digit size
 // and the others are scaled by size / 120 (PLAN.md §9 D26).
 export const FONT_SIZES_PT = [48, 72, 94, 100, 120];
+// Digit colors when random font color is on. Purely visual: the rule for when to press does
+// not depend on the color (PLAN.md §9 D37).
+export const FONT_COLORS = ['red', 'yellow', 'blue'];
 
 // 'classic': a press counts during the digit or what follows it. 'wait_mask': a non-3 must be
 // answered while the mask shows; a press before it is 'early' (PLAN.md §9 D31).
@@ -98,6 +101,7 @@ export const DEFAULT_SETTINGS = {
   trialMode: false,
   feedbackMode: 'off',
   randomFontSize: false,
+  randomFontColor: false,
   balancedDigits: false,
   maskMs: 0,
   responseMode: 'classic',
@@ -150,6 +154,18 @@ export function generateSequence(totalTrials, targetFrequency, { balanced = fals
 // One font size per trial, each drawn with equal chance.
 export function generateFontSizes(totalTrials, random = Math.random) {
   return Array.from({ length: totalTrials }, () => FONT_SIZES_PT[Math.floor(random() * FONT_SIZES_PT.length)]);
+}
+
+// One color per trial, balanced: every color appears equally often (counts differ by at most 1,
+// the extra trials go to random colors). The order is random and independent of the digit.
+export function generateFontColors(totalTrials, random = Math.random) {
+  const base = Math.floor(totalTrials / FONT_COLORS.length);
+  const lucky = new Set(shuffle([...FONT_COLORS], random).slice(0, totalTrials % FONT_COLORS.length));
+  const colors = [];
+  for (const color of FONT_COLORS) {
+    for (let i = 0; i < base + (lucky.has(color) ? 1 : 0); i++) colors.push(color);
+  }
+  return shuffle(colors, random);
 }
 
 export function fontScale(fontSizePt) {

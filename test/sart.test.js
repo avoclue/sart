@@ -5,7 +5,7 @@ import {
   createTrial, registerPress, scoreTrial, summarize,
   feedbackFor, estimateMinutes, combineInputTypes, settingsProblem, balancedCounts, NON_TARGET_DIGITS,
   adminSettingsProblem, practiceChoices, afterDigitMs, cueOffsetMs, outcomeOf, isAnticipation,
-  sessionDurationMs, FONT_SIZES_PT, generateFontSizes, fontScale,
+  sessionDurationMs, FONT_SIZES_PT, FONT_COLORS, generateFontSizes, generateFontColors, fontScale,
 } from '../public/js/sart.js';
 
 function seededRandom(seed) {
@@ -308,4 +308,16 @@ test('sessionDurationMs adds the countdown, every window and any feedback pauses
   assert.equal(sessionDurationMs({ displayDurationMs: 250, totalTrials: 225, maskMs: 900 }), 3000 + 225 * 1150);
   assert.equal(sessionDurationMs({ displayDurationMs: 500, totalTrials: 100 }), 3000 + 100 * 700);
   assert.equal(sessionDurationMs({ displayDurationMs: 250, totalTrials: 18, maskMs: 900 }, 18), 3000 + 18 * 1150 + 18 * 1000);
+});
+
+test('generateFontColors balances the three colors', () => {
+  for (const n of [10, 18, 100, 225, 226]) {
+    const colors = generateFontColors(n, seededRandom(n));
+    assert.equal(colors.length, n);
+    const counts = FONT_COLORS.map((c) => colors.filter((x) => x === c).length);
+    assert.ok(Math.max(...counts) - Math.min(...counts) <= 1, `n=${n} counts=${counts}`);
+  }
+  assert.deepEqual(FONT_COLORS, ['red', 'yellow', 'blue']);
+  assert.equal(generateFontColors(225, seededRandom(1)).filter((c) => c === 'blue').length, 75);
+  assert.notDeepEqual(generateFontColors(30, seededRandom(1)), generateFontColors(30, seededRandom(2)));
 });

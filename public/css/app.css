@@ -229,6 +229,11 @@ kbd {
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
+.stimulus.color-red { color: #c4161c; }
+/* Pure yellow (#f6d106) is 1.4:1 on the page background, so the yellow digit is a mustard
+   that reaches 3:1, the WCAG minimum for large text. */
+.stimulus.color-yellow { color: #b58900; }
+.stimulus.color-blue { color: #1a56db; }
 .stimulus.feedback { font-size: clamp(2.5rem, 12vw, 4.5rem); }
 /* The mask is a fixed size, about a normal digit's height, whatever the digit size was. */
 .mask {

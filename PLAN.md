@@ -75,7 +75,7 @@ once at the end of that window. Metric definitions stay the same.
 | 9 | Language | UI in **Bahasa Indonesia**. Code and docs in English. |
 | 10 | Hosting | Cloudflare. |
 | R1–R7 | Research additions | All accepted (trial-level data, RT metrics, rates, anticipations, practice, aborted sessions saved, data-quality checks). Practice is an **admin-controlled trial mode** (§9 D3), not a block before every test. |
-| R8 | Classic SART comparability | Built as options: random font sizes (D26), 225 trials at 11.1% (D27, D28), balanced digits (D29), the 900 ms mask (D30) and a practice block (D33). |
+| R8 | Classic SART comparability | Built as options: random font sizes (D26), random font color (D37), 225 trials at 11.1% (D27, D28), balanced digits (D29), the 900 ms mask (D30) and a practice block (D33). |
 | — | Dashboard | **Admin only.** Covers RT and other metrics; scope in §6. Participants see only the accuracy (§9 D36). |
 | 11 | Scale and devices | About 30 participants, desktop first. Mobile must still work. |
 
@@ -181,7 +181,7 @@ Aborted sessions are saved with `status = aborted`.
 - Pilot with 3 to 5 people on the real devices and network, including one phone.
 - Give participants device instructions: laptop plugged in, other apps closed, an up-to-date browser, the test tab kept in front.
 - Choose the settings for the study. For classic SART: 250 ms digits, mask 900 ms, mode Klasik,
-  225 digits at 11.1%, balanced digits on, random font size on, plus the number of practice sessions.
+  225 digits at 11.1%, balanced digits on, random font size on, plus the number of practice sessions. Random font color is off for classic SART.
 
 ### Possible improvements (deferred on 2026-10-26)
 - Keep an unsaved result in browser storage and retry the save when the page is reopened.
@@ -229,31 +229,4 @@ Aborted sessions are saved with `status = aborted`.
 | D34 | Free duration and mask | Display duration and mask length are free whole numbers instead of dropdowns, as session length already was (D27). Display duration: 100 to 2000 ms. Mask: 0 (off) or 100 to 2000 ms. Reason: the owner wanted to try values the fixed options could not express. The lower bound of 100 ms is because a 60 Hz screen draws a frame about every 17 ms and browser timers are not precise below that; it is a guard, not a validated minimum, so very short digits need a pilot on the real devices. The upper bound only stops typos. The admin form, the server and the database all check the same range (`settingsProblem` in `sart.js`, migration 0006). The reference's 250 / 500 / 750 ms are still valid values. |
 | D35 | Session duration and countdown text | Each session stores `started_at` (UTC, when the countdown began) and `duration_ms` (from then until the last trial's window closed, or until "Akhiri tes" was pressed for an early end). A pause for the end dialog that is cancelled counts as part of the duration, because the participant really took that long. It is measured by the participant's browser clock (`performance.now()`), so the server only checks that it is a whole number from 0 to 24 hours; both fields are empty for sessions saved before migration 0006 or by a page loaded before it. The admin session table and the sessions CSV show them. The countdown also shows "Tes dimulai dalam..." above the number, including when a paused test resumes. |
 | D36 | Participant results show accuracy only | The results screen after a practice or main session shows only the accuracy. Correct hits, commission errors and omission errors are not shown, but they are still stored and shown to researchers. This changes §3 decision 7 and §6, which showed four metrics. Practice feedback during the session (D17) is unchanged. |
-
-## 10. Proposed, not built: random font color
-
-Requested on 2026-10-26 and still under discussion. **Nothing here is implemented.** Do not build it until the open questions below are answered. Once built, move it into §9 as D37 and update §3 R8.
-
-### What was asked
-
-- An admin on/off setting (default off), for practice and real sessions, like random font size (D26).
-- When on, each trial shows its digit in one of three colors: **red, yellow or blue**. (The first request said red, green and blue; the owner corrected it to yellow.)
-- One of the colors is the **no-go color**. The owner said "maybe use blue for now" and chose a constant in the code rather than an admin setting.
-- The colors are **balanced**: each appears equally often in a session.
-- When the setting is on, the instructions add a line: do not press when the no-go color is shown.
-
-### Decided so far
-
-- The no-go rule is **digit 3 OR the no-go color**: do not press if the digit is 3 or its color is blue. Both rules stay active.
-- The no-go color is a constant in the code (blue for now), not an admin setting. It should still be stored with each session, so a later change does not make old data ambiguous.
-
-### Open questions
-
-1. **How rare is the no-go?** With balanced colors, one third of trials are blue. Combined with 20% threes this gives about 47% no-go trials (1 − 0.8 × 2/3), against 20% now. Classic SART depends on a rare no-go so that pressing becomes a habit; with 47% the task becomes much easier to inhibit and its results are not comparable with SART norms or with sessions that have the setting off. Options: accept it and document it as a variant (like "Tunggu mask", D31); keep the share of no-go trials at the "Proporsi angka 3" value by giving blue only to part of the trials; or let blue replace the 3 rule altogether. The owner has not chosen.
-2. **What does "balanced" cover?** Equal counts of each color over the whole session (assumed), or equal counts within the 3s and within the other digits separately? This decides whether a session's number of no-go trials is fixed or varies with chance.
-3. **Is yellow readable?** Yellow `#f6d106` on the page background is 1.5:1 (DESIGN.md), so a yellow digit would be nearly invisible on the current light test screen. Needs either a darker amber for the digit, or a different test background (for example dark), and a chosen hex value for each of the three colors that passes contrast. Check with the contrast tool before choosing. Blue as the no-go color is a good fit for color-blind participants, since red and yellow can look alike to some people but both mean "press".
-4. **Scoring and data.** A blue non-3 digit must count as a no-go trial: a press is a commission error, no press is a correct withhold. Today `is_target` means "the digit is 3". Decide whether `is_target` is widened to mean "no-go", or a new field is added. Rates (commission rate, omission rate) need their denominators redefined, the server check for the number of 3s stays about digits only, and the trial data and CSV need a `font_color` column. In Klasik mode with the setting off, scoring must stay exactly as in the reference (CLAUDE.md).
-5. **Feedback text in practice.** What is shown after a press on a blue digit that is not a 3? The current reasons only mention the digit 3.
-6. **Instruction wording.** The exact sentence, and how to name the color for participants ("biru"), including on phones where the instruction is the only cue.
-7. **Interaction with other settings.** Whether color applies in "Tunggu mask" mode (a blue digit is no-go, so there is no mask to wait for), and whether the mask keeps the dark ink color. Whether color is drawn independently of font size (assumed yes).
-8. **Estimate and results.** Accuracy would count blue trials like any other. Participants still see only the accuracy (D36).
+| D37 | Random font color | An admin on/off setting (default off) for practice and real sessions. When on, each trial shows its digit in red, yellow or blue. The colors are **balanced**: each appears equally often in a session (counts differ by at most 1, the extra trials go to random colors), in a random order that does not depend on the digit or the font size. Colors are drawn before the test, so a replayed trial (D19) keeps its color. The color is **purely visual**: when to press does not change, so scoring and the four reference metrics are unaffected. It is saved per trial (`font_color`, empty when off) and per session (`random_font_color`), and the server refuses a color outside the three, a color when the setting is off, or counts that are not balanced. Reason: same idea as random font size (D26), at the owner's request. The first request named green; the owner corrected it to yellow. Pure yellow `#f6d106` is only 1.4:1 on the page background (DESIGN.md), so the yellow digit is the mustard `#b58900` (3:1, the WCAG minimum for large text); red is `#c4161c` and blue `#1a56db`. The mask and feedback text keep their own colors. **Not built, deferred by the owner on 2026-10-26:** a no-go color (blue, "do not press when it shows") and its instruction. If it comes back, these questions are open: the no-go share (balanced colors with digit 3 as well would make about 47% of trials no-go, far from classic SART's rare no-go), what "balanced" covers, how scoring and `is_target` would change, the feedback and instruction wording, and its interaction with "Tunggu mask". |

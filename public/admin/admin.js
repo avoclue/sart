@@ -77,7 +77,7 @@ const PROBLEM_FIELDS = [
   [/Proporsi|tidak ada angka 3/, 'set-frequency'],
   [/Tunggu mask/, 'set-response-mode'],
 ];
-const settingChecks = { trialMode: 'set-trial-mode', randomFontSize: 'set-random-font', balancedDigits: 'set-balanced' };
+const settingChecks = { trialMode: 'set-trial-mode', randomFontSize: 'set-random-font', randomFontColor: 'set-random-color', balancedDigits: 'set-balanced' };
 
 function fillSettings(s) {
   for (const [key, field] of Object.entries(settingFields)) field.el().value = field.format(s[key]);
@@ -413,7 +413,7 @@ async function openDetail(s) {
   $('detail-summary').textContent = `${s.participant_name}. ${sessionKindLabel(s)}, `
     + `${s.status === 'completed' ? 'selesai' : 'dihentikan'}. Pengaturan: ${s.display_duration_ms} ms, `
     + `${s.total_trials} angka, ${formatPercent(s.target_frequency)}% angka 3, `
-    + `ukuran angka ${s.random_font_size ? 'acak' : 'tetap'}, angka ${s.balanced_digits ? 'seimbang' : 'tidak seimbang'}, `
+    + `ukuran angka ${s.random_font_size ? 'acak' : 'tetap'}, warna angka ${s.random_font_color ? 'acak' : 'tetap'}, angka ${s.balanced_digits ? 'seimbang' : 'tidak seimbang'}, `
     + `${s.mask_ms ? `mask ${s.mask_ms} ms` : 'tanpa mask'}, mode respons ${s.response_mode === 'wait_mask' ? 'Tunggu mask' : 'Klasik'}.`;
   $('detail-status').className = 'status';
   $('detail-status').textContent = 'Memuat data per angka...';

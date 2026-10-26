@@ -1,7 +1,7 @@
 // Participant app: screens, input and timing. All scoring lives in sart.js.
 
 import {
-  COUNTDOWN_FROM, COUNTDOWN_STEP_MS, COUNTDOWN_LABEL, FEEDBACK_PAUSE_MS, generateSequence, generateFontSizes, fontScale,
+  COUNTDOWN_FROM, COUNTDOWN_STEP_MS, COUNTDOWN_LABEL, FEEDBACK_PAUSE_MS, generateSequence, generateFontSizes, generateFontColors, fontScale,
   responseWindowMs, cueOffsetMs, createTrial, registerPress, outcomeOf, scoreTrial, summarize, feedbackFor,
   estimateMinutes, combineInputTypes, practiceChoices,
 } from './sart.js';
@@ -111,9 +111,9 @@ $('start-test').addEventListener('click', () => startSession(settings.practiceSe
 
 // Test runner
 
-function setStimulus(text, scale = 1) {
+function setStimulus(text, scale = 1, color = null) {
   $('stimulus').textContent = text;
-  $('stimulus').className = 'stimulus';
+  $('stimulus').className = color ? `stimulus color-${color}` : 'stimulus';
   $('stimulus').style.setProperty('--digit-scale', scale);
   $('stimulus-reason').textContent = '';
   $('stimulus-lead').hidden = true;
@@ -172,8 +172,9 @@ function startSession(kind) {
     settings: { ...settings, totalTrials },
     feedbackMode: practice ? settings.feedbackMode : 'off',
     sequence: generateSequence(totalTrials, settings.targetFrequency, { balanced: settings.balancedDigits }),
-    // Drawn up front so a replayed trial (PLAN.md §9 D19) keeps its size.
+    // Sizes and colors are drawn up front so a replayed trial (PLAN.md §9 D19) keeps them.
     fontSizes: settings.randomFontSize ? generateFontSizes(totalTrials) : null,
+    fontColors: settings.randomFontColor ? generateFontColors(totalTrials) : null,
     trials: [],
     index: 0,
     current: null,
@@ -204,7 +205,9 @@ function beginTrial() {
   run.current = createTrial(run.index + 1, run.sequence[run.index]);
   const fontSizePt = run.fontSizes ? run.fontSizes[run.index] : null;
   run.current.fontSizePt = fontSizePt;
-  setStimulus(String(run.current.digit), fontSizePt ? fontScale(fontSizePt) : 1);
+  const fontColor = run.fontColors ? run.fontColors[run.index] : null;
+  run.current.fontColor = fontColor;
+  setStimulus(String(run.current.digit), fontSizePt ? fontScale(fontSizePt) : 1, fontColor);
   run.onset = performance.now();
   run.accepting = true;
   const { displayDurationMs, maskMs } = run.settings;
@@ -328,6 +331,7 @@ function finishTest(status) {
         totalTrials: run.settings.totalTrials,
         targetFrequency: run.settings.targetFrequency,
         randomFontSize: run.settings.randomFontSize,
+        randomFontColor: run.settings.randomFontColor,
         balancedDigits: run.settings.balancedDigits,
         maskMs: run.settings.maskMs,
         responseMode: run.settings.responseMode,
@@ -338,8 +342,8 @@ function finishTest(status) {
         inputType: combineInputTypes(run.inputTypes),
       },
       tabHiddenCount: run.tabHiddenCount,
-      trials: run.trials.map(({ trialNo, digit, responded, rtMs, extraPresses, fontSizePt }) => ({
-        trialNo, digit, responded, rtMs, extraPresses, fontSizePt,
+      trials: run.trials.map(({ trialNo, digit, responded, rtMs, extraPresses, fontSizePt, fontColor }) => ({
+        trialNo, digit, responded, rtMs, extraPresses, fontSizePt, fontColor,
       })),
     },
     summary: summarize(run.trials),

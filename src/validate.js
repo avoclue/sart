@@ -2,7 +2,7 @@
 
 import {
   settingsProblem, adminSettingsProblem, afterDigitMs, SETTING_LIMITS, FEEDBACK_MODES,
-  NON_TARGET_DIGITS, FONT_SIZES_PT, targetCount, createTrial, registerPress, scoreTrial,
+  NON_TARGET_DIGITS, FONT_SIZES_PT, FONT_COLORS, targetCount, createTrial, registerPress, scoreTrial,
 } from '../public/js/sart.js';
 
 // A session cannot honestly last longer than this; it only catches nonsense values.
@@ -49,9 +49,12 @@ export function validateSettings(body) {
   if (maskMs === undefined || responseMode === undefined) fail('maskMs and responseMode are required');
   if (typeof body.randomFontSize !== 'boolean') fail('randomFontSize must be a boolean');
   if (typeof body.balancedDigits !== 'boolean') fail('balancedDigits must be a boolean');
+  // Missing means off, so a page loaded before this setting existed can still save its result.
+  const randomFontColor = body.randomFontColor ?? false;
+  if (typeof randomFontColor !== 'boolean') fail('randomFontColor must be a boolean');
   return {
     displayDurationMs, totalTrials, targetFrequency, maskMs, responseMode,
-    randomFontSize: body.randomFontSize, balancedDigits: body.balancedDigits,
+    randomFontSize: body.randomFontSize, randomFontColor, balancedDigits: body.balancedDigits,
   };
 }
 
@@ -105,12 +108,24 @@ function validateTrials(rawTrials, settings, status) {
     if (settings.randomFontSize ? !FONT_SIZES_PT.includes(fontSizePt) : fontSizePt !== null) {
       fail(`trial ${i + 1} has an invalid fontSizePt`);
     }
-    return { ...scoreTrial(trial), fontSizePt };
+    const fontColor = raw.fontColor ?? null;
+    if (settings.randomFontColor ? !FONT_COLORS.includes(fontColor) : fontColor !== null) {
+      fail(`trial ${i + 1} has an invalid fontColor`);
+    }
+    return { ...scoreTrial(trial), fontSizePt, fontColor };
   });
 
   const targets = trials.filter((t) => t.isTarget).length;
   const expected = targetCount(totalTrials, targetFrequency);
   if (status === 'completed' ? targets !== expected : targets > expected) fail('wrong number of target digits');
+
+  // Balanced colors: no color may appear more often than its share allows, and a completed
+  // session must have them all within 1 of each other (PLAN.md §9 D37).
+  if (settings.randomFontColor) {
+    const counts = FONT_COLORS.map((c) => trials.filter((t) => t.fontColor === c).length);
+    if (Math.max(...counts) > Math.ceil(totalTrials / FONT_COLORS.length)) fail('colors are not balanced');
+    if (status === 'completed' && Math.max(...counts) - Math.min(...counts) > 1) fail('colors are not balanced');
+  }
 
   // Balanced sessions: no non-3 digit may appear more often than its share allows,
   // and a completed session must have them all within 1 of each other (PLAN.md §9 D29).

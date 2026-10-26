@@ -81,6 +81,14 @@
           </div>
           <div class="check-row">
             <label class="check">
+              <input id="set-random-color" type="checkbox">
+              <span>Warna angka acak</span>
+            </label>
+            <button type="button" class="help" aria-expanded="false" aria-controls="tip-random-color" aria-label="Penjelasan warna angka acak"><span aria-hidden="true">?</span></button>
+            <p id="tip-random-color" class="tip" role="status" hidden>Tiap angka tampil dalam salah satu dari 3 warna (merah, kuning, biru), dipilih acak dan seimbang: tiap warna muncul sama banyak. Warna hanya tampilan; aturan menekan tetap sama.</p>
+          </div>
+          <div class="check-row">
+            <label class="check">
               <input id="set-balanced" type="checkbox">
               <span>Angka seimbang</span>
             </label>
@@ -329,6 +337,10 @@
         <div>
           <dt>Ukuran angka <code>random_font_size</code>, <code>font_size_pt</code></dt>
           <dd>Jika ukuran angka acak aktif, tiap angka tampil dalam ukuran 48, 72, 94, 100 atau 120 pt (ukuran dari Robertson dkk., 1997). 120 pt adalah ukuran normal, yang lain diperkecil sebanding.</dd>
+        </div>
+        <div>
+          <dt>Warna angka <code>random_font_color</code>, <code>font_color</code></dt>
+          <dd>Jika warna angka acak aktif, tiap angka tampil merah, kuning atau biru. Tiap warna muncul sama banyak dalam satu sesi (selisih paling banyak 1), urutannya acak dan tidak bergantung pada angka. Warna tidak mengubah aturan: tekan untuk setiap angka kecuali 3. Kuning ditampilkan sebagai kuning tua agar terbaca di latar terang.</dd>
         </div>
         <div>
           <dt>Angka seimbang <code>balanced_digits</code></dt>
