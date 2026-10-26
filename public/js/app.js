@@ -1,7 +1,7 @@
 // Participant app: screens, input and timing. All scoring lives in sart.js.
 
 import {
-  COUNTDOWN_FROM, COUNTDOWN_STEP_MS, FEEDBACK_PAUSE_MS, generateSequence, generateFontSizes, fontScale,
+  COUNTDOWN_FROM, COUNTDOWN_STEP_MS, COUNTDOWN_LABEL, FEEDBACK_PAUSE_MS, generateSequence, generateFontSizes, fontScale,
   responseWindowMs, cueOffsetMs, createTrial, registerPress, outcomeOf, scoreTrial, summarize, feedbackFor,
   estimateMinutes, combineInputTypes, practiceChoices,
 } from './sart.js';
@@ -116,6 +116,7 @@ function setStimulus(text, scale = 1) {
   $('stimulus').className = 'stimulus';
   $('stimulus').style.setProperty('--digit-scale', scale);
   $('stimulus-reason').textContent = '';
+  $('stimulus-lead').hidden = true;
   $('mask').hidden = true;
 }
 
@@ -135,10 +136,15 @@ function showFeedback(key) {
   $('stimulus-reason').textContent = reason;
 }
 
-// 3, 2, 1 before the first digit, and again when the test resumes (PLAN.md §9 D32).
+// 3, 2, 1 before the first digit, and again when the test resumes (PLAN.md §9 D32),
+// with a line above the number (PLAN.md §9 D35).
 function countdown(then) {
   for (let i = 0; i < COUNTDOWN_FROM; i++) {
-    later(i * COUNTDOWN_STEP_MS, () => setStimulus(String(COUNTDOWN_FROM - i)));
+    later(i * COUNTDOWN_STEP_MS, () => {
+      setStimulus(String(COUNTDOWN_FROM - i));
+      $('stimulus-lead').textContent = COUNTDOWN_LABEL;
+      $('stimulus-lead').hidden = false;
+    });
   }
   later(COUNTDOWN_FROM * COUNTDOWN_STEP_MS, () => {
     setStimulus('');
@@ -177,6 +183,10 @@ function startSession(kind) {
     tabHiddenCount: 0,
     timers: [],
     paused: false,
+    // Session length: from the start of the countdown to the end (PLAN.md §9 D35).
+    startedAt: new Date().toISOString(),
+    startedPerf: performance.now(),
+    stoppedPerf: null,
   };
   $('test-practice-tag').hidden = !practice;
   $('test-practice-tag').textContent = `Sesi Latihan ${run.practiceNo} dari ${settings.practiceSessions}`;
@@ -269,6 +279,7 @@ document.addEventListener('visibilitychange', () => {
 $('end-test').addEventListener('click', () => {
   run.paused = true;
   run.accepting = false;
+  run.stoppedPerf = performance.now();
   clearTimers();
   run.current = null;
   setStimulus('');
@@ -278,6 +289,7 @@ $('end-test').addEventListener('click', () => {
 function resumeTest() {
   $('end-dialog').close();
   run.paused = false;
+  run.stoppedPerf = null;
   $('test-area').focus();
   countdown(beginTrial);
 }
@@ -308,6 +320,9 @@ function finishTest(status) {
       practiceNo: run.practiceNo,
       visitId: participant.visitId,
       consentAt: participant.consentAt,
+      startedAt: run.startedAt,
+      // An early end stops the clock when "Akhiri tes" was pressed, not when the dialog closes.
+      durationMs: Math.round((run.stoppedPerf ?? performance.now()) - run.startedPerf),
       settings: {
         displayDurationMs: run.settings.displayDurationMs,
         totalTrials: run.settings.totalTrials,
@@ -374,9 +389,6 @@ function showResults({ kind, practiceNo, status, summary }) {
   $('result-summary').hidden = !completed;
   if (completed) {
     $('result-accuracy').textContent = `${summary.accuracy}%`;
-    $('result-hits').textContent = summary.correctHits;
-    $('result-commissions').textContent = summary.commissionErrors;
-    $('result-omissions').textContent = summary.omissionErrors;
   }
 
   const choices = practice

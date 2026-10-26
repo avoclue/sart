@@ -7,6 +7,7 @@ export const BLANK_MS = 200;
 // The 3-2-1 countdown before every session replaces a silent start delay (PLAN.md §9 D32).
 export const COUNTDOWN_FROM = 3;
 export const COUNTDOWN_STEP_MS = 1000;
+export const COUNTDOWN_LABEL = 'Tes dimulai dalam...';
 export const ANTICIPATION_MS = 100;
 export const FEEDBACK_PAUSE_MS = 1000;
 export const FEEDBACK_MODES = ['off', 'errors', 'all'];
@@ -14,15 +15,16 @@ export const FEEDBACK_MODES = ['off', 'errors', 'all'];
 // and the others are scaled by size / 120 (PLAN.md §9 D26).
 export const FONT_SIZES_PT = [48, 72, 94, 100, 120];
 
-export const DISPLAY_DURATIONS_MS = [250, 500, 750];
-// 0 means no mask: the digit is followed by the 200 ms blank. 900 ms is classic SART (PLAN.md §9 D30).
-export const MASK_OPTIONS_MS = [0, 500, 900, 1150];
 // 'classic': a press counts during the digit or what follows it. 'wait_mask': a non-3 must be
 // answered while the mask shows; a press before it is 'early' (PLAN.md §9 D31).
 export const RESPONSE_MODES = ['classic', 'wait_mask'];
 // Free-text settings (PLAN.md §9 D27). 500 trials keeps a saved session well inside the
 // request size limit; the proportion of 3s is a percentage with at most one decimal.
 export const SETTING_LIMITS = {
+  // Free numbers in ms (PLAN.md §9 D34). A mask of 0 means no mask: the digit is followed by the
+  // 200 ms blank. Classic SART is a 250 ms digit and a 900 ms mask (D30).
+  displayDurationMs: { min: 100, max: 2000 },
+  maskMs: { min: 100, max: 2000 },
   totalTrials: { min: 10, max: 500 },
   targetPercent: { min: 1, max: 50 },
   practiceSessions: { min: 0, max: 5 },
@@ -33,9 +35,13 @@ export const SETTING_LIMITS = {
 export function settingsProblem({
   displayDurationMs, totalTrials, targetFrequency, maskMs = 0, responseMode = 'classic',
 }) {
-  const { totalTrials: t, targetPercent: p } = SETTING_LIMITS;
-  if (!DISPLAY_DURATIONS_MS.includes(displayDurationMs)) return 'Durasi angka harus 250, 500 atau 750 ms.';
-  if (!MASK_OPTIONS_MS.includes(maskMs)) return 'Mask harus Mati, 500, 900 atau 1150 ms.';
+  const { totalTrials: t, targetPercent: p, displayDurationMs: d, maskMs: m } = SETTING_LIMITS;
+  if (!Number.isInteger(displayDurationMs) || displayDurationMs < d.min || displayDurationMs > d.max) {
+    return `Durasi angka harus bilangan bulat dari ${d.min} sampai ${d.max} ms.`;
+  }
+  if (!Number.isInteger(maskMs) || (maskMs !== 0 && (maskMs < m.min || maskMs > m.max))) {
+    return `Mask harus 0 (mati) atau bilangan bulat dari ${m.min} sampai ${m.max} ms.`;
+  }
   if (!RESPONSE_MODES.includes(responseMode)) return 'Mode respons tidak dikenal.';
   if (responseMode === 'wait_mask' && maskMs === 0) {
     return 'Mode respons "Tunggu mask" butuh mask. Pilih durasi mask atau gunakan mode Klasik.';

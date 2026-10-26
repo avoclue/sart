@@ -50,8 +50,8 @@ test('rejects missing name or ID', () => {
   assert.throws(() => validateResult(body({ participantId: undefined })), ValidationError);
 });
 
-test('rejects settings outside the allowed options', () => {
-  const settings = { displayDurationMs: 300, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: false, maskMs: 0, responseMode: 'classic' };
+test('rejects settings outside the allowed ranges', () => {
+  const settings = { displayDurationMs: 50, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: false, maskMs: 0, responseMode: 'classic' };
   assert.throws(() => validateResult(body({ settings })), ValidationError);
 });
 
@@ -148,4 +148,18 @@ test('mask widens the RT window; wait_mask allows negative RTs and scores them e
   assert.equal(validateResult(body({ settings: wait, trials: trialsFor(digits, 1000) })).trials[5].outcome, 'hit');
   assert.throws(() => validateResult(body({ settings: wait, trials: trialsFor(digits, 1100) })), /rtMs/);
   assert.throws(() => validateResult(body({ settings: { ...wait, maskMs: 0 } })), /butuh mask/);
+});
+
+test('session start and duration are optional but checked when sent', () => {
+  const none = validateResult(body());
+  assert.equal(none.startedAt, null);
+  assert.equal(none.durationMs, null);
+  const r = validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z', durationMs: 305_420 }));
+  assert.equal(r.startedAt, '2026-10-26T03:00:00.000Z');
+  assert.equal(r.durationMs, 305_420);
+  assert.throws(() => validateResult(body({ startedAt: 'yesterday', durationMs: 1000 })), ValidationError);
+  assert.throws(() => validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z' })), ValidationError);
+  assert.throws(() => validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z', durationMs: -1 })), ValidationError);
+  assert.throws(() => validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z', durationMs: 1.5 })), ValidationError);
+  assert.throws(() => validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z', durationMs: 90_000_000 })), ValidationError);
 });

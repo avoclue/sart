@@ -33,7 +33,7 @@ export const SESSION_COLUMNS = [
   col('omission_rate'), col('anticipation_count'), col('user_agent'), col('screen_width'),
   col('screen_height'), col('input_type'), col('tab_hidden_count'), col('feedback_mode'),
   col('random_font_size'), col('balanced_digits'), col('mask_ms'), col('response_mode'),
-  col('early_count'), col('practice_no'), col('visit_id'),
+  col('early_count'), col('practice_no'), col('visit_id'), wibCol('started_at'), col('duration_ms'),
 ];
 
 export const TRIAL_COLUMNS = [

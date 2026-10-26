@@ -30,11 +30,11 @@
           <div class="settings-grid">
             <div>
               <label for="set-duration">Durasi angka</label>
-              <select id="set-duration">
-                <option value="250">250 ms (cepat)</option>
-                <option value="500">500 ms (standar)</option>
-                <option value="750">750 ms (lambat)</option>
-              </select>
+              <div class="unit-input">
+                <input id="set-duration" type="text" inputmode="numeric" autocomplete="off" aria-describedby="duration-hint">
+                <span aria-hidden="true">ms</span>
+              </div>
+              <p id="duration-hint" class="hint field-hint">100 sampai 2000. SART klasik: 250.</p>
             </div>
             <div>
               <label for="set-trials">Jumlah angka per sesi</label>
@@ -52,12 +52,11 @@
                 <label for="set-mask">Mask setelah angka</label>
                 <button type="button" class="help" aria-expanded="false" aria-controls="tip-mask" aria-label="Penjelasan mask"><span aria-hidden="true">?</span></button>
               </div>
-              <select id="set-mask">
-                <option value="0">Mati</option>
-                <option value="500">500 ms</option>
-                <option value="900">900 ms (klasik)</option>
-                <option value="1150">1150 ms</option>
-              </select>
+              <div class="unit-input">
+                <input id="set-mask" type="text" inputmode="numeric" autocomplete="off" aria-describedby="mask-hint">
+                <span aria-hidden="true">ms</span>
+              </div>
+              <p id="mask-hint" class="hint field-hint">0 = mati, atau 100 sampai 2000. SART klasik: 900.</p>
             </div>
             <div>
               <div class="label-row">
@@ -70,7 +69,7 @@
               </select>
             </div>
           </div>
-          <p id="tip-mask" class="tip" role="status" hidden>Setelah tiap angka tampil simbol ⊗ selama waktu ini, lalu angka berikutnya. Jika Mati, angka diikuti layar kosong 200 ms. SART klasik memakai angka 250 ms dan mask 900 ms.</p>
+          <p id="tip-mask" class="tip" role="status" hidden>Setelah tiap angka tampil simbol ⊗ selama waktu ini, lalu angka berikutnya. Jika 0, angka diikuti layar kosong 200 ms. SART klasik memakai angka 250 ms dan mask 900 ms.</p>
           <p id="tip-response-mode" class="tip" role="status" hidden>Klasik: tekanan dihitung saat angka atau mask tampil, dan RT diukur dari munculnya angka. Tunggu mask: partisipan harus menunggu simbol ⊗; tekanan saat angka masih tampil dihitung "terlalu cepat", dan RT diukur dari munculnya mask. Tunggu mask bukan prosedur SART klasik dan butuh mask.</p>
           <div class="check-row">
             <label class="check">
@@ -123,7 +122,8 @@
 
         <div class="estimate" aria-live="polite">
           <h3>Perkiraan durasi tes</h3>
-          <p id="estimate-text"></p>
+          <p id="estimate-note" hidden></p>
+          <ul id="estimate-list"></ul>
         </div>
 
         <div class="form-actions">
@@ -340,7 +340,7 @@
         </div>
         <div>
           <dt>Mask <code>mask_ms</code></dt>
-          <dd>Lama simbol ⊗ (lingkaran dengan silang) tampil setelah tiap angka, dalam milidetik; 0 berarti tanpa mask (angka diikuti layar kosong 200 ms). SART klasik memakai 900 ms setelah angka 250 ms. Ukuran mask selalu sama, tidak ikut ukuran angka acak.</dd>
+          <dd>Lama simbol ⊗ (lingkaran dengan silang) tampil setelah tiap angka, dalam milidetik (0, atau 100 sampai 2000); 0 berarti tanpa mask (angka diikuti layar kosong 200 ms). SART klasik memakai 900 ms setelah angka 250 ms. Ukuran mask selalu sama, tidak ikut ukuran angka acak.</dd>
         </div>
         <div>
           <dt>Mode respons <code>response_mode</code></dt>
@@ -349,6 +349,10 @@
         <div>
           <dt>Terlalu cepat <code>early_count</code></dt>
           <dd>Hanya pada mode Tunggu mask: jumlah angka selain 3 yang ditekan saat angkanya masih tampil, sebelum mask. Tekanan pertama yang menentukan, jadi tekanan berikutnya saat mask tidak membuatnya benar. Terlalu cepat menurunkan akurasi, tetapi bukan omisi dan bukan antisipasi. Tidak ditampilkan ke partisipan.</dd>
+        </div>
+        <div>
+          <dt>Durasi <code>duration_ms</code>, <code>started_at</code></dt>
+          <dd>Lama satu sesi, dari mulainya hitung mundur sampai sesi selesai (atau sampai tombol Akhiri tes ditekan), dalam milidetik. Jika tes dijeda lalu dilanjutkan, jedanya ikut dihitung. Diukur oleh browser partisipan. Kosong untuk sesi yang disimpan sebelum kolom ini ada. <code>started_at</code> adalah waktu hitung mundur dimulai.</dd>
         </div>
         <div>
           <dt>Waktu (WIB)</dt>

@@ -108,9 +108,9 @@ async function postResult(request, env) {
        correct_hits, commission_errors, omission_errors, correct_withholds, accuracy, mean_rt_ms,
        sd_rt_ms, rt_cv, commission_rate, omission_rate, anticipation_count, user_agent,
        screen_width, screen_height, input_type, tab_hidden_count, feedback_mode, random_font_size,
-       balanced_digits, mask_ms, response_mode, early_count, practice_no, visit_id)
+       balanced_digits, mask_ms, response_mode, early_count, practice_no, visit_id, started_at, duration_ms)
      SELECT ?, ?, ?, ?, ?, COUNT(*) + 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-       ?, ?, ?, ?, ?
+       ?, ?, ?, ?, ?, ?, ?
      FROM sessions WHERE participant_id = ? AND is_trial = ?`,
   ).bind(
     id, new Date().toISOString(), r.participantId, r.participantIdRaw, r.participantName, isTrial,
@@ -121,7 +121,7 @@ async function postResult(request, env) {
     summary.anticipationCount, request.headers.get('User-Agent')?.slice(0, 500) ?? null,
     r.screenWidth, r.screenHeight, r.inputType, r.tabHiddenCount, feedbackMode,
     r.settings.randomFontSize ? 1 : 0, r.settings.balancedDigits ? 1 : 0, r.settings.maskMs,
-    r.settings.responseMode, summary.earlyCount, r.practiceNo, r.visitId, r.participantId, isTrial,
+    r.settings.responseMode, summary.earlyCount, r.practiceNo, r.visitId, r.startedAt, r.durationMs, r.participantId, isTrial,
   );
 
   // All trials go in one statement as a JSON array. One row of bound values per trial would

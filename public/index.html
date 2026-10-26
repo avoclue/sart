@@ -83,6 +83,7 @@
       </div>
       <div id="test-area" class="test-area" tabindex="-1">
         <div class="stimulus-box">
+          <p id="stimulus-lead" class="stimulus-lead" hidden></p>
           <p id="stimulus" class="stimulus" aria-live="off"></p>
           <!-- A div, not the svg itself, carries "hidden": SVG elements have no hidden property. -->
           <div id="mask" class="mask" hidden>
@@ -115,23 +116,6 @@
           <p class="accuracy-value" id="result-accuracy"></p>
           <p class="accuracy-label">Akurasi: jawaban yang tepat dari semua angka</p>
         </div>
-        <dl class="metrics">
-          <div>
-            <dt>Respons tepat</dt>
-            <dd id="result-hits"></dd>
-            <p>Menekan saat angka selain 3 muncul.</p>
-          </div>
-          <div>
-            <dt>Salah menekan</dt>
-            <dd id="result-commissions"></dd>
-            <p>Menekan saat angka 3 muncul.</p>
-          </div>
-          <div>
-            <dt>Terlewat</dt>
-            <dd id="result-omissions"></dd>
-            <p>Tidak menekan saat angka selain 3 muncul.</p>
-          </div>
-        </dl>
       </div>
       <p id="results-question">Lanjut ke mana?</p>
       <div class="result-actions">

@@ -5,6 +5,9 @@ import {
   NON_TARGET_DIGITS, FONT_SIZES_PT, targetCount, createTrial, registerPress, scoreTrial,
 } from '../public/js/sart.js';
 
+// A session cannot honestly last longer than this; it only catches nonsense values.
+const MAX_DURATION_MS = 24 * 60 * 60 * 1000;
+
 export const INPUT_TYPES = ['keyboard', 'touch', 'mixed', 'none'];
 // Timer callbacks can fire slightly after the window closes; allow some slack.
 const RT_SLACK_MS = 100;
@@ -137,6 +140,15 @@ export function validateResult(body) {
   }
   if (body.sessionKind === 'main' && body.practiceNo != null) fail('a main session has no practiceNo');
   if (typeof body.visitId !== 'string' || !UUID.test(body.visitId)) fail('visitId must be a UUID');
+  // Optional, so a page loaded before this field existed can still save its result.
+  let startedAt = null;
+  let durationMs = null;
+  if (body.startedAt != null || body.durationMs != null) {
+    if (typeof body.startedAt !== 'string' || Number.isNaN(Date.parse(body.startedAt))) fail('startedAt must be a date');
+    durationMs = nonNegativeInt(body.durationMs, 'durationMs');
+    if (durationMs > MAX_DURATION_MS) fail('durationMs is too long');
+    startedAt = new Date(body.startedAt).toISOString();
+  }
   const device = body.device ?? {};
   if (!INPUT_TYPES.includes(device.inputType)) fail('invalid device.inputType');
 
@@ -149,6 +161,8 @@ export function validateResult(body) {
     practiceNo,
     visitId: body.visitId.toLowerCase(),
     consentAt: new Date(body.consentAt).toISOString(),
+    startedAt,
+    durationMs,
     settings,
     screenWidth: optionalInt(device.screenWidth, 'device.screenWidth'),
     screenHeight: optionalInt(device.screenHeight, 'device.screenHeight'),
