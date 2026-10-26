@@ -207,6 +207,8 @@ kbd {
   padding: var(--space-2);
 }
 .test-bar .practice-tag { margin: 0; }
+/* "Sesi Latihan 1 dari 2" and "Akhiri tes" both fit on one line, even at 320px wide. */
+.test-bar .practice-tag, .test-bar button { white-space: nowrap; }
 .test-bar button { margin-left: auto; }
 .test-area {
   flex: 1;
