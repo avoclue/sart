@@ -59,7 +59,7 @@
       </div>
 
       <div id="instructions-body" hidden>
-        <p id="practice-note" class="practice-tag" hidden>Sesi Latihan</p>
+        <p id="practice-note" hidden></p>
         <ol class="steps">
           <li>Angka 1 sampai 9 akan muncul satu per satu di tengah layar.</li>
           <li id="step-press">Tekan <kbd>spasi</kbd> setiap kali angka muncul, <mark>kecuali angka 3</mark>. Di layar sentuh, ketuk area tes.</li>
@@ -110,34 +110,41 @@
     <!-- Results -->
     <section id="screen-results" class="screen panel" aria-labelledby="results-title" hidden>
       <h1 id="results-title">Hasil Anda</h1>
-      <div class="accuracy">
-        <p class="accuracy-value" id="result-accuracy"></p>
-        <p class="accuracy-label">Akurasi: jawaban yang tepat dari semua angka</p>
+      <div id="result-summary">
+        <div class="accuracy">
+          <p class="accuracy-value" id="result-accuracy"></p>
+          <p class="accuracy-label">Akurasi: jawaban yang tepat dari semua angka</p>
+        </div>
+        <dl class="metrics">
+          <div>
+            <dt>Respons tepat</dt>
+            <dd id="result-hits"></dd>
+            <p>Menekan saat angka selain 3 muncul.</p>
+          </div>
+          <div>
+            <dt>Salah menekan</dt>
+            <dd id="result-commissions"></dd>
+            <p>Menekan saat angka 3 muncul.</p>
+          </div>
+          <div>
+            <dt>Terlewat</dt>
+            <dd id="result-omissions"></dd>
+            <p>Tidak menekan saat angka selain 3 muncul.</p>
+          </div>
+        </dl>
       </div>
-      <dl class="metrics">
-        <div>
-          <dt>Respons tepat</dt>
-          <dd id="result-hits"></dd>
-          <p>Menekan saat angka selain 3 muncul.</p>
-        </div>
-        <div>
-          <dt>Salah menekan</dt>
-          <dd id="result-commissions"></dd>
-          <p>Menekan saat angka 3 muncul.</p>
-        </div>
-        <div>
-          <dt>Terlewat</dt>
-          <dd id="result-omissions"></dd>
-          <p>Tidak menekan saat angka selain 3 muncul.</p>
-        </div>
-      </dl>
-      <button type="button" id="retry" class="btn-primary">Ulangi tes</button>
+      <p id="results-question">Lanjut ke mana?</p>
+      <div class="result-actions">
+        <button type="button" id="start-main" class="btn-primary" hidden>Mulai sesi utama</button>
+        <button type="button" id="practice-again" class="btn-secondary" hidden>Latihan lagi</button>
+      </div>
+      <p id="closing-note" class="closing-note" hidden></p>
     </section>
   </main>
 
   <dialog id="end-dialog" aria-labelledby="end-dialog-title">
     <h2 id="end-dialog-title">Akhiri tes sekarang?</h2>
-    <p>Jawaban yang sudah masuk akan disimpan, lalu Anda kembali ke halaman awal.</p>
+    <p>Jawaban yang sudah masuk akan disimpan.</p>
     <div class="dialog-actions">
       <button type="button" id="end-cancel" class="btn-primary" autofocus>Lanjutkan tes</button>
       <button type="button" id="end-confirm" class="btn-secondary">Ya, akhiri</button>

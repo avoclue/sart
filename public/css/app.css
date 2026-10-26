@@ -290,3 +290,6 @@ dialog {
 }
 dialog::backdrop { background: rgb(29 36 51 / 0.45); }
 .dialog-actions { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-3); }
+
+.result-actions { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.closing-note { font-size: 1.125rem; font-weight: 700; color: var(--blue); margin: 0; }

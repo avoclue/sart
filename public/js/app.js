@@ -3,7 +3,7 @@
 import {
   COUNTDOWN_FROM, COUNTDOWN_STEP_MS, FEEDBACK_PAUSE_MS, generateSequence, generateFontSizes, fontScale,
   responseWindowMs, cueOffsetMs, createTrial, registerPress, outcomeOf, scoreTrial, summarize, feedbackFor,
-  estimateMinutes, combineInputTypes,
+  estimateMinutes, combineInputTypes, practiceChoices,
 } from './sart.js';
 import { API_BASE } from './config.js';
 
@@ -23,6 +23,8 @@ const participant = { name: '', id: '', consentAt: null, visitId: null };
 let settings = null;
 let run = null;
 let pendingResult = null;
+// Practice sessions done in this visit, completed or ended early (PLAN.md §9 D33).
+let practiceDone = 0;
 
 function show(screenId) {
   for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== screenId;
@@ -53,6 +55,7 @@ $('identity-form').addEventListener('submit', (event) => {
     return;
   }
   Object.assign(participant, { name, id, consentAt: new Date().toISOString(), visitId: crypto.randomUUID() });
+  practiceDone = 0;
   openInstructions();
 });
 
@@ -75,18 +78,28 @@ async function openInstructions() {
     return;
   }
 
-  const practice = settings.trialMode;
-  const feedbackMode = practice ? settings.feedbackMode : 'off';
-  $('practice-note').hidden = !practice;
+  const hasPractice = settings.practiceSessions > 0;
+  const mainOffered = !settings.trialMode;
+  const feedbackMode = hasPractice ? settings.feedbackMode : 'off';
+  $('practice-note').hidden = !hasPractice;
+  $('practice-note').textContent = mainOffered
+    ? 'Anda mulai dengan sesi latihan. Setelah latihan, Anda bisa memilih latihan lagi atau mulai sesi utama.'
+    : 'Saat ini hanya tersedia sesi latihan.';
   $('feedback-note').hidden = feedbackMode === 'off';
   $('feedback-note').textContent = feedbackMode === 'all'
-    ? 'Setiap selesai satu angka, akan muncul tulisan "Benar" atau "Salah". Jika salah, alasannya ikut ditampilkan.'
-    : 'Jika jawaban Anda keliru, akan muncul tulisan "Salah" beserta alasannya.';
+    ? 'Saat latihan, setiap selesai satu angka akan muncul tulisan "Benar" atau "Salah". Jika salah, alasannya ikut ditampilkan.'
+    : 'Saat latihan, jika jawaban Anda keliru akan muncul tulisan "Salah" beserta alasannya.';
   const waitMask = settings.responseMode === 'wait_mask';
   $('step-press').hidden = waitMask;
   $('step-press-wait').hidden = !waitMask;
   $('mask-note').hidden = settings.maskMs === 0 || waitMask;
-  $('duration-note').textContent = `Tes berlangsung sekitar ${estimateMinutes(settings)} menit.`;
+  const practiceMinutes = estimateMinutes({ ...settings, totalTrials: settings.practiceTrials });
+  const mainMinutes = estimateMinutes(settings);
+  $('duration-note').textContent = [
+    hasPractice ? `Satu sesi latihan sekitar ${practiceMinutes} menit.` : '',
+    mainOffered ? `Sesi utama sekitar ${mainMinutes} menit.` : '',
+  ].filter(Boolean).join(' ');
+  $('start-test').textContent = hasPractice ? 'Mulai latihan' : 'Mulai tes';
   $('settings-loading').hidden = true;
   $('instructions-body').hidden = false;
   $('instructions-title').focus();
@@ -94,7 +107,7 @@ async function openInstructions() {
 
 $('instructions-title').tabIndex = -1;
 $('settings-retry').addEventListener('click', openInstructions);
-$('start-test').addEventListener('click', startTest);
+$('start-test').addEventListener('click', () => startSession(settings.practiceSessions > 0 ? 'practice' : 'main'));
 
 // Test runner
 
@@ -142,14 +155,19 @@ function later(ms, fn) {
   run.timers.push(setTimeout(fn, ms));
 }
 
-function startTest() {
-  const practice = settings.trialMode;
+// kind is 'practice' or 'main'. Practice uses every test setting except its own length,
+// and is the only place feedback is shown (PLAN.md §9 D33).
+function startSession(kind) {
+  const practice = kind === 'practice';
+  const totalTrials = practice ? settings.practiceTrials : settings.totalTrials;
   run = {
-    settings: { ...settings },
+    kind,
+    practiceNo: practice ? practiceDone + 1 : null,
+    settings: { ...settings, totalTrials },
     feedbackMode: practice ? settings.feedbackMode : 'off',
-    sequence: generateSequence(settings.totalTrials, settings.targetFrequency, { balanced: settings.balancedDigits }),
+    sequence: generateSequence(totalTrials, settings.targetFrequency, { balanced: settings.balancedDigits }),
     // Drawn up front so a replayed trial (PLAN.md §9 D19) keeps its size.
-    fontSizes: settings.randomFontSize ? generateFontSizes(settings.totalTrials) : null,
+    fontSizes: settings.randomFontSize ? generateFontSizes(totalTrials) : null,
     trials: [],
     index: 0,
     current: null,
@@ -161,6 +179,7 @@ function startTest() {
     paused: false,
   };
   $('test-practice-tag').hidden = !practice;
+  $('test-practice-tag').textContent = `Sesi Latihan ${run.practiceNo} dari ${settings.practiceSessions}`;
   setStimulus('');
   show('screen-test');
   $('test-area').focus();
@@ -279,14 +298,14 @@ function finishTest(status) {
   clearTimers();
   pendingResult = {
     status,
-    practice: run.settings.trialMode,
+    kind: run.kind,
+    practiceNo: run.practiceNo,
     body: {
       participantName: participant.name,
       participantId: participant.id,
       status,
-      // Until the practice flow is in place, the study-wide practice switch decides the kind.
-      sessionKind: run.settings.trialMode ? 'practice' : 'main',
-      practiceNo: run.settings.trialMode ? 1 : null,
+      sessionKind: run.kind,
+      practiceNo: run.practiceNo,
       visitId: participant.visitId,
       consentAt: participant.consentAt,
       settings: {
@@ -335,37 +354,51 @@ async function saveResult() {
 
   const result = pendingResult;
   pendingResult = null;
-  if (result.status === 'aborted') {
-    returnToForm();
-    return;
-  }
+  if (result.kind === 'practice') practiceDone += 1;
   showResults(result);
 }
 
 $('saving-retry').addEventListener('click', saveResult);
 
-function showResults({ practice, summary }) {
-  $('results-title').textContent = practice ? 'Hasil latihan' : 'Hasil Anda';
-  $('result-accuracy').textContent = `${summary.accuracy}%`;
-  $('result-hits').textContent = summary.correctHits;
-  $('result-commissions').textContent = summary.commissionErrors;
-  $('result-omissions').textContent = summary.omissionErrors;
+// One screen for every ending (PLAN.md §9 D33): the results of a completed session, then
+// what comes next. After a practice: another practice and/or the main session. After the
+// main session, or when nothing is left: a closing note and no buttons.
+function showResults({ kind, practiceNo, status, summary }) {
+  const practice = kind === 'practice';
+  const completed = status === 'completed';
+  if (practice) {
+    $('results-title').textContent = completed ? `Hasil latihan ${practiceNo}` : `Latihan ${practiceNo} dihentikan`;
+  } else {
+    $('results-title').textContent = completed ? 'Hasil Anda' : 'Sesi utama dihentikan';
+  }
+  $('result-summary').hidden = !completed;
+  if (completed) {
+    $('result-accuracy').textContent = `${summary.accuracy}%`;
+    $('result-hits').textContent = summary.correctHits;
+    $('result-commissions').textContent = summary.commissionErrors;
+    $('result-omissions').textContent = summary.omissionErrors;
+  }
+
+  const choices = practice
+    ? practiceChoices({ practiceDone, practiceSessions: settings.practiceSessions, trialMode: settings.trialMode })
+    : { practiceAgain: false, startMain: false };
+  $('practice-again').hidden = !choices.practiceAgain;
+  $('practice-again').textContent = `Latihan lagi (${practiceDone + 1} dari ${settings.practiceSessions})`;
+  $('start-main').hidden = !choices.startMain;
+  // With a choice, the main session is the primary action; another practice is secondary.
+  $('practice-again').className = choices.startMain ? 'btn-secondary' : 'btn-primary';
+  const finished = !choices.practiceAgain && !choices.startMain;
+  $('results-question').hidden = finished;
+  $('closing-note').hidden = !finished;
+  if (practice) $('closing-note').textContent = 'Sesi latihan selesai. Terima kasih.';
+  else $('closing-note').textContent = completed ? 'Terima kasih, sesi utama selesai.' : 'Terima kasih atas partisipasi Anda.';
   show('screen-results');
   $('results-title').focus();
 }
 
 $('results-title').tabIndex = -1;
-$('retry').addEventListener('click', openInstructions);
-
-// After an early end the participant is back at the form; consent must be given again.
-function returnToForm() {
-  $('consent').checked = false;
-  participant.consentAt = null;
-  show('screen-form');
-  $('form-title').focus();
-}
-
-$('form-title').tabIndex = -1;
+$('practice-again').addEventListener('click', () => startSession('practice'));
+$('start-main').addEventListener('click', () => startSession('main'));
 
 // Warn before leaving while a test is running or a result is unsaved.
 window.addEventListener('beforeunload', (event) => {
