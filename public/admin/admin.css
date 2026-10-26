@@ -176,3 +176,43 @@ fieldset .settings-grid { grid-template-columns: repeat(auto-fill, minmax(13rem,
 #settings-form input[type="text"] { min-height: 44px; padding: 0.45rem 0.6rem; }
 .unit-input { display: flex; align-items: center; gap: 0.4rem; }
 .unit-input span { font-weight: 700; }
+
+/* Checkbox with a "?" toggletip. The button's hit area is 44px; the visible circle is smaller. */
+.check-row { position: relative; display: flex; align-items: center; flex-wrap: wrap; gap: 0 0.25rem; margin-bottom: var(--space-1); }
+#settings-form .check-row .check { margin-bottom: 0; }
+.help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0;
+  background: none;
+  border: none;
+}
+.help span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--blue);
+  border-radius: 50%;
+  color: var(--blue);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.help[aria-expanded="true"] span { background: var(--blue); color: #fff; }
+/* Keep the focus ring inside the 44px button so it does not cover the label text. */
+.help:focus-visible { outline-offset: -6px; }
+/* Shown in the flow under its row, so an open tip never covers another control. */
+.tip {
+  flex: 0 0 100%;
+  margin: 0 0 var(--space-1);
+  padding: 0.5rem 0.75rem;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  font-size: 0.95rem;
+}

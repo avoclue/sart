@@ -48,14 +48,22 @@
               </div>
             </div>
           </div>
-          <label class="check">
-            <input id="set-random-font" type="checkbox">
-            <span>Ukuran angka acak: tiap angka tampil dalam salah satu dari 5 ukuran (40% sampai 100%).</span>
-          </label>
-          <label class="check">
-            <input id="set-balanced" type="checkbox">
-            <span>Angka seimbang: angka selain 3 muncul sama banyak.</span>
-          </label>
+          <div class="check-row">
+            <label class="check">
+              <input id="set-random-font" type="checkbox">
+              <span>Ukuran angka acak</span>
+            </label>
+            <button type="button" class="help" aria-expanded="false" aria-controls="tip-random-font" aria-label="Penjelasan ukuran angka acak"><span aria-hidden="true">?</span></button>
+            <p id="tip-random-font" class="tip" role="status" hidden>Tiap angka tampil dalam salah satu dari 5 ukuran (40% sampai 100%), dipilih acak.</p>
+          </div>
+          <div class="check-row">
+            <label class="check">
+              <input id="set-balanced" type="checkbox">
+              <span>Angka seimbang</span>
+            </label>
+            <button type="button" class="help" aria-expanded="false" aria-controls="tip-balanced" aria-label="Penjelasan angka seimbang"><span aria-hidden="true">?</span></button>
+            <p id="tip-balanced" class="tip" role="status" hidden>Angka selain 3 muncul sama banyak (selisih paling banyak 1), dengan urutan tetap acak. Dengan 225 angka dan 11,1%, tiap angka 1 sampai 9 muncul 25 kali.</p>
+          </div>
         </fieldset>
 
         <fieldset>

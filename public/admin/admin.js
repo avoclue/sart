@@ -118,6 +118,29 @@ $('settings-form').addEventListener('submit', async (event) => {
 
 $('settings-reload').addEventListener('click', loadSettings);
 
+// "?" toggletips: a click, tap or Enter opens the explanation under the row and a second
+// one closes it. Escape or clicking elsewhere closes it too.
+const helpButtons = [...document.querySelectorAll('.help')];
+
+function setTip(button, open) {
+  button.setAttribute('aria-expanded', String(open));
+  $(button.getAttribute('aria-controls')).hidden = !open;
+}
+
+for (const button of helpButtons) {
+  button.addEventListener('click', () => {
+    const open = button.getAttribute('aria-expanded') !== 'true';
+    for (const other of helpButtons) setTip(other, false);
+    setTip(button, open);
+  });
+}
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') for (const button of helpButtons) setTip(button, false);
+});
+document.addEventListener('click', (event) => {
+  if (!event.target.closest('.help')) for (const button of helpButtons) setTip(button, false);
+});
+
 // Overview
 
 const MEAN_ROWS = [
