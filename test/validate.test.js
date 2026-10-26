@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateResult, validateAdminSettings, ValidationError } from '../src/validate.js';
+import { validateResult, validateAdminSettings, validateSet, ValidationError } from '../src/validate.js';
 import { toCsv, toWib } from '../src/csv.js';
 
 function trialsFor(digits, rtMs = 300) {
@@ -16,6 +16,7 @@ function body(overrides = {}) {
   return {
     participantName: ' Budi ',
     participantId: ' P01 ',
+    setCode: 'a',
     status: 'completed',
     sessionKind: 'main',
     practiceNo: null,
@@ -125,6 +126,26 @@ test('admin settings need a boolean trialMode and a known feedbackMode', () => {
   assert.throws(() => validateAdminSettings({ ...full, practiceSessions: 0 }), /minimal 1 sesi latihan/);
   assert.throws(() => validateAdminSettings({ ...full, practiceTrials: 9 }), /angka per sesi latihan/);
   assert.throws(() => validateAdminSettings({ ...full, maskMs: 0, responseMode: 'wait_mask' }), /butuh mask/);
+});
+
+test('the set code is required and normalised', () => {
+  assert.equal(validateResult(body({ setCode: ' B-2 ' })).setCode, 'b-2');
+  assert.throws(() => validateResult(body({ setCode: undefined })), /invalid setCode/);
+  assert.throws(() => validateResult(body({ setCode: '' })), /invalid setCode/);
+  assert.throws(() => validateResult(body({ setCode: 'set b' })), /invalid setCode/);
+  assert.throws(() => validateResult(body({ setCode: 'x'.repeat(21) })), /invalid setCode/);
+});
+
+test('a test set needs a valid code, a label and a boolean isActive', () => {
+  const settings = { displayDurationMs: 250, totalTrials: 225, targetFrequency: 0.111, randomFontSize: true, randomFontColor: false, balancedDigits: true, maskMs: 900, responseMode: 'classic', trialMode: false, feedbackMode: 'errors', practiceSessions: 1, practiceTrials: 18 };
+  const set = { ...settings, code: ' B ', label: ' Set B ', isActive: true };
+  assert.deepEqual(validateSet(set), { ...settings, code: 'b', label: 'Set B', isActive: true });
+  assert.throws(() => validateSet({ ...set, code: '' }), /Kode set wajib/);
+  assert.throws(() => validateSet({ ...set, code: 'b_2' }), /Kode set hanya/);
+  assert.throws(() => validateSet({ ...set, label: '  ' }), /Label set wajib/);
+  assert.throws(() => validateSet({ ...set, label: 'x'.repeat(61) }), /Label set paling banyak/);
+  assert.throws(() => validateSet({ ...set, isActive: 'yes' }), /isActive/);
+  assert.throws(() => validateSet({ ...set, practiceTrials: 5 }), /angka per sesi latihan/);
 });
 
 test('toWib converts UTC to Asia/Jakarta time', () => {

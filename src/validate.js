@@ -1,7 +1,7 @@
 // Validation of request bodies. Pure functions, so they can be unit-tested with node --test.
 
 import {
-  settingsProblem, adminSettingsProblem, afterDigitMs, SETTING_LIMITS, FEEDBACK_MODES,
+  settingsProblem, adminSettingsProblem, setMetaProblem, normaliseSetCode, afterDigitMs, SETTING_LIMITS, FEEDBACK_MODES,
   NON_TARGET_DIGITS, FONT_SIZES_PT, FONT_COLORS, targetCount, createTrial, registerPress, scoreTrial,
 } from '../public/js/sart.js';
 
@@ -72,6 +72,20 @@ export function validateAdminSettings(body) {
   const problem = adminSettingsProblem(all);
   if (problem) fail(problem);
   return all;
+}
+
+// A test set from the admin page: its code, label and active switch, then its settings (PLAN.md §9 D38).
+export function validateSet(body) {
+  if (!body || typeof body !== 'object') fail('set must be an object');
+  const problem = setMetaProblem(body);
+  if (problem) fail(problem);
+  if (typeof body.isActive !== 'boolean') fail('isActive must be a boolean');
+  return {
+    code: normaliseSetCode(body.code),
+    label: body.label.trim(),
+    isActive: body.isActive,
+    ...validateAdminSettings(body),
+  };
 }
 
 // Rebuilds every trial from its digit and presses, so the outcome is
@@ -145,6 +159,8 @@ export function validateResult(body) {
   if (!['completed', 'aborted'].includes(body.status)) fail('status must be completed or aborted');
   if (typeof body.consentAt !== 'string' || Number.isNaN(Date.parse(body.consentAt))) fail('consentAt must be a date');
 
+  const setCode = normaliseSetCode(body.setCode);
+  if (setMetaProblem({ code: setCode, label: '-' })) fail('invalid setCode');
   const settings = validateSettings(body.settings);
   // Practice or main session within one visit (PLAN.md §9 D33).
   if (!['practice', 'main'].includes(body.sessionKind)) fail('sessionKind must be practice or main');
@@ -171,6 +187,7 @@ export function validateResult(body) {
     participantName,
     participantIdRaw,
     participantId: normaliseParticipantId(participantIdRaw),
+    setCode,
     status: body.status,
     sessionKind: body.sessionKind,
     practiceNo,

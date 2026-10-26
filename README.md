@@ -15,13 +15,15 @@ The design is in `PLAN.md`, and the UI direction is in `DESIGN.md`.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/api/settings` | none | Current test settings |
+| GET | `/api/sets` | none | Active test sets: code and label only |
+| GET | `/api/settings?set=code` | none | One active set's test settings (404 for an unknown or inactive set) |
 | POST | `/api/results` | none | Save a completed or aborted session with its trials |
-| GET/PUT | `/api/admin/settings` | admin | Read or change settings |
-| GET | `/api/admin/sessions` | admin | All sessions (`?include_trial=1` adds trial-mode sessions) |
+| GET/POST | `/api/admin/sets` | admin | List test sets with their session counts, or add one |
+| PUT/DELETE | `/api/admin/sets/:id` | admin | Change a set, or delete one no session uses |
+| GET | `/api/admin/sessions` | admin | All sessions (`?include_trial=1` adds trial-mode sessions, `?set=code` keeps one set) |
 | GET | `/api/admin/sessions/:id/trials` | admin | Trial rows for one session |
-| GET | `/api/admin/export/sessions.csv` | admin | Session summary CSV |
-| GET | `/api/admin/export/trials.csv` | admin | Trial-level CSV |
+| GET | `/api/admin/export/sessions.csv` | admin | Session summary CSV (same filters as sessions) |
+| GET | `/api/admin/export/trials.csv` | admin | Trial-level CSV (same filters as sessions) |
 
 Admin auth is HTTP Basic: any username, with the password from the `ADMIN_PASSWORD` secret.
 
@@ -29,6 +31,10 @@ Admin auth is HTTP Basic: any username, with the password from the `ADMIN_PASSWO
 
 Open `/admin/` (locally http://localhost:8787/admin/). The browser asks for a username and
 password: any username works, and the password is `ADMIN_PASSWORD`. To log out, close the browser.
+
+Settings are kept per **test set** (`PLAN.md` §9 D38). Each set has a code and a label.
+Participants open a set with `/?set=code`. The plain link `/` shows a required list of the
+active sets in the form. Add a set with "Tambah set", which copies the selected set.
 
 ## Local development
 

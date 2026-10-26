@@ -58,6 +58,20 @@ select, input[type="search"] {
 }
 .form-actions .status { margin: 0; }
 
+/* Test sets (PLAN.md §9 D38) */
+.set-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.set-bar > div { flex: 1 1 16rem; }
+#set-link code { overflow-wrap: anywhere; }
+/* A code already used by sessions is fixed; show it as not editable. */
+#set-code[readonly] { background: var(--paper); color: var(--ink-soft); }
+#missing-sets { margin-bottom: var(--space-3); }
+
 .btn-link {
   display: inline-flex;
   align-items: center;

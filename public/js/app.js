@@ -3,7 +3,7 @@
 import {
   COUNTDOWN_FROM, COUNTDOWN_STEP_MS, COUNTDOWN_LABEL, FEEDBACK_PAUSE_MS, generateSequence, generateFontSizes, generateFontColors, fontScale,
   responseWindowMs, cueOffsetMs, createTrial, registerPress, outcomeOf, scoreTrial, summarize, feedbackFor,
-  estimateMinutes, combineInputTypes, practiceChoices,
+  estimateMinutes, combineInputTypes, practiceChoices, normaliseSetCode,
 } from './sart.js';
 import { API_BASE } from './config.js';
 
@@ -18,8 +18,10 @@ const OMISSION_REASON_WAIT_MASK = 'Tekan saat simbol ⊗ muncul setelah angka se
 
 const $ = (id) => document.getElementById(id);
 
-// visitId links every session of one visit (PLAN.md §9 D33).
-const participant = { name: '', id: '', consentAt: null, visitId: null };
+// visitId links every session of one visit (PLAN.md §9 D33). setCode is the test set (D38).
+const participant = { name: '', id: '', consentAt: null, visitId: null, setCode: null };
+// The set named in the link (/?set=b), or null on the plain link, where the form asks for it.
+const linkSetCode = normaliseSetCode(new URLSearchParams(window.location.search).get('set') ?? '') || null;
 let settings = null;
 let run = null;
 let pendingResult = null;
@@ -30,6 +32,57 @@ function show(screenId) {
   for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== screenId;
   window.scrollTo(0, 0);
 }
+
+// Test set (PLAN.md §9 D38)
+
+function setsProblem(message, canRetry) {
+  $('sets-status').hidden = true;
+  $('sets-error-text').textContent = message;
+  $('sets-retry').hidden = !canRetry;
+  $('sets-error').hidden = false;
+  if (canRetry) $('sets-retry').focus();
+}
+
+// Only active sets are listed. A link to an unknown or inactive set does not fall back to
+// another set, so a wrong link is noticed.
+async function loadSets() {
+  $('sets-status').hidden = false;
+  $('sets-error').hidden = true;
+  $('identity-form').hidden = true;
+  let sets;
+  try {
+    const response = await fetch(`${API_BASE}/api/sets`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    sets = await response.json();
+  } catch (err) {
+    console.error(err);
+    setsProblem('Tes belum bisa dimuat. Periksa koneksi internet Anda, lalu coba lagi.', true);
+    return;
+  }
+
+  if (linkSetCode) {
+    const set = sets.find((s) => s.code === linkSetCode);
+    if (!set) {
+      setsProblem('Tautan tidak valid. Minta tautan ke peneliti.', false);
+      return;
+    }
+    $('set-tag').textContent = set.label;
+    $('set-tag').hidden = false;
+  } else {
+    if (sets.length === 0) {
+      setsProblem('Tes belum dibuka. Hubungi peneliti.', false);
+      return;
+    }
+    // Nothing is pre-selected, so a set is always chosen on purpose.
+    const placeholder = $('set-select').options[0];
+    $('set-select').replaceChildren(placeholder, ...sets.map((s) => new Option(s.label, s.code)));
+    $('set-field').hidden = false;
+  }
+  $('sets-status').hidden = true;
+  $('identity-form').hidden = false;
+}
+
+$('sets-retry').addEventListener('click', loadSets);
 
 // Identity form
 
@@ -44,17 +97,25 @@ $('identity-form').addEventListener('submit', (event) => {
   const name = $('name').value.trim();
   const id = $('participant-id').value.trim();
   const consent = $('consent').checked;
+  const setCode = linkSetCode ?? $('set-select').value;
+  if (!linkSetCode) setFieldError($('set-select'), $('set-error'), setCode ? '' : 'Pilih set yang diminta peneliti.');
   setFieldError($('name'), $('name-error'), name ? '' : 'Nama wajib diisi.');
   setFieldError($('participant-id'), $('participant-id-error'), id ? '' : 'ID partisipan wajib diisi.');
   setFieldError($('consent'), $('consent-error'), consent ? '' : 'Centang persetujuan untuk melanjutkan.');
 
-  const firstInvalid = [$('name'), $('participant-id'), $('consent')]
+  const firstInvalid = [$('set-select'), $('name'), $('participant-id'), $('consent')]
     .find((el) => el.getAttribute('aria-invalid') === 'true');
   if (firstInvalid) {
     firstInvalid.focus();
     return;
   }
-  Object.assign(participant, { name, id, consentAt: new Date().toISOString(), visitId: crypto.randomUUID() });
+  Object.assign(participant, { name, id, setCode, consentAt: new Date().toISOString(), visitId: crypto.randomUUID() });
+  // A reload stays in the chosen set.
+  if (!linkSetCode) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('set', setCode);
+    window.history.replaceState(null, '', url);
+  }
   practiceDone = 0;
   openInstructions();
 });
@@ -66,17 +127,27 @@ async function openInstructions() {
   $('settings-loading').hidden = false;
   $('settings-error').hidden = true;
   $('instructions-body').hidden = true;
+  let notFound = false;
   try {
-    const response = await fetch(`${API_BASE}/api/settings`, { cache: 'no-store' });
+    const response = await fetch(`${API_BASE}/api/settings?set=${encodeURIComponent(participant.setCode)}`, { cache: 'no-store' });
+    // 404: the set was deactivated or deleted after the form was opened.
+    notFound = response.status === 404;
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     settings = await response.json();
   } catch (err) {
     console.error(err);
     $('settings-loading').hidden = true;
+    $('settings-error-text').textContent = notFound
+      ? 'Set ini sudah tidak aktif. Hubungi peneliti.'
+      : 'Tes belum bisa dimuat. Periksa koneksi internet Anda, lalu coba lagi.';
+    $('settings-retry').hidden = notFound;
     $('settings-error').hidden = false;
-    $('settings-retry').focus();
+    if (!notFound) $('settings-retry').focus();
     return;
   }
+
+  $('instructions-set').textContent = settings.label;
+  $('instructions-set').hidden = false;
 
   const hasPractice = settings.practiceSessions > 0;
   const mainOffered = !settings.trialMode;
@@ -318,6 +389,7 @@ function finishTest(status) {
     body: {
       participantName: participant.name,
       participantId: participant.id,
+      setCode: participant.setCode,
       status,
       sessionKind: run.kind,
       practiceNo: run.practiceNo,
@@ -415,6 +487,8 @@ function showResults({ kind, practiceNo, status, summary }) {
 $('results-title').tabIndex = -1;
 $('practice-again').addEventListener('click', () => startSession('practice'));
 $('start-main').addEventListener('click', () => startSession('main'));
+
+loadSets();
 
 // Warn before leaving while a test is running or a result is unsaved.
 window.addEventListener('beforeunload', (event) => {

@@ -114,7 +114,7 @@ p { margin: 0 0 var(--space-2); }
 .field { margin-bottom: var(--space-3); }
 label { display: block; font-weight: 700; margin-bottom: 0.35rem; }
 
-input[type="text"] {
+input[type="text"], select {
   width: 100%;
   min-height: 48px;
   padding: 0.6rem 0.75rem;
@@ -124,7 +124,7 @@ input[type="text"] {
   border: 1.5px solid var(--edge);
   border-radius: var(--radius-control);
 }
-input[aria-invalid="true"] { border-color: var(--error); border-width: 2px; }
+input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--error); border-width: 2px; }
 
 .field-error { color: var(--error); font-weight: 700; margin: 0.35rem 0 0; }
 .field-error::before { content: "! "; }
@@ -185,6 +185,17 @@ kbd {
   padding: 0.2rem 0.7rem;
   border-radius: var(--radius-control);
   margin-bottom: var(--space-2);
+}
+
+/* The test set's label, so the researcher can check the set (PLAN.md §9 D38). */
+.set-tag {
+  display: inline-block;
+  border: 1.5px solid var(--blue);
+  color: var(--blue);
+  font-weight: 700;
+  padding: 0.2rem 0.7rem;
+  border-radius: var(--radius-control);
+  margin: 0 0 var(--space-3);
 }
 
 .status { color: var(--ink-soft); }

@@ -22,9 +22,43 @@
   <main class="admin-main">
     <!-- Settings -->
     <section class="block" aria-labelledby="settings-title">
-      <h2 id="settings-title">Pengaturan tes</h2>
-      <p id="settings-status" class="status" role="status">Memuat pengaturan...</p>
+      <h2 id="settings-title">Set tes</h2>
+      <p class="hint">Tiap set punya pengaturannya sendiri. Partisipan membuka set lewat tautannya (<code>/?set=kode</code>). Tautan tanpa kode menampilkan daftar set aktif di formulir, dan partisipan harus memilih salah satu.</p>
+      <p id="settings-status" class="status" role="status">Memuat set...</p>
+      <div id="set-bar" class="set-bar" hidden>
+        <div>
+          <label for="set-picker">Set yang diubah</label>
+          <select id="set-picker"></select>
+        </div>
+        <button type="button" id="set-add" class="btn-secondary">Tambah set</button>
+      </div>
       <form id="settings-form" hidden>
+        <fieldset>
+          <legend id="set-legend">Set</legend>
+          <div class="settings-grid">
+            <div>
+              <label for="set-code">Kode set</label>
+              <input id="set-code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="20" aria-describedby="code-hint">
+              <p id="code-hint" class="hint field-hint">Huruf kecil, angka dan tanda -. Dipakai di tautan. Tidak bisa diubah setelah ada sesi.</p>
+            </div>
+            <div>
+              <label for="set-label">Label</label>
+              <input id="set-label" type="text" autocomplete="off" maxlength="60" aria-describedby="label-hint">
+              <p id="label-hint" class="hint field-hint">Tampil ke partisipan. Pakai nama netral, misalnya "Set B", bukan nama yang menyebut kondisinya.</p>
+            </div>
+          </div>
+          <div class="check-row">
+            <label class="check">
+              <input id="set-active" type="checkbox">
+              <span>Set aktif</span>
+            </label>
+            <button type="button" class="help" aria-expanded="false" aria-controls="tip-active" aria-label="Penjelasan set aktif"><span aria-hidden="true">?</span></button>
+            <p id="tip-active" class="tip" role="status" hidden>Hanya set aktif yang bisa dibuka partisipan dan muncul di daftar. Tautan set nonaktif menampilkan pesan bahwa tautannya tidak valid. Data dan pengaturannya tetap tersimpan.</p>
+          </div>
+          <p id="set-link" class="hint" hidden></p>
+          <p id="set-usage" class="hint" hidden></p>
+        </fieldset>
+
         <fieldset>
           <legend>Tes</legend>
           <div class="settings-grid">
@@ -135,7 +169,9 @@
         </div>
 
         <div class="form-actions">
-          <button type="submit" class="btn-primary">Simpan pengaturan</button>
+          <button type="submit" id="set-save" class="btn-primary">Simpan set</button>
+          <button type="button" id="set-cancel" class="btn-secondary" hidden>Batal</button>
+          <button type="button" id="set-delete" class="btn-secondary" hidden>Hapus set</button>
           <p id="settings-saved" class="status" role="status"></p>
         </div>
       </form>
@@ -148,7 +184,16 @@
     <!-- Overview: counts, means and distributions -->
     <section class="block" aria-labelledby="overview-title">
       <h2 id="overview-title">Ringkasan</h2>
-      <p class="hint" id="overview-basis">Rata-rata dan grafik memakai sesi utama lengkap terakhir dari tiap partisipan. Sesi latihan tidak dihitung.</p>
+      <div class="filters">
+        <div>
+          <label for="filter-set">Set</label>
+          <select id="filter-set" aria-describedby="filter-set-hint">
+            <option value="all">Semua set</option>
+          </select>
+        </div>
+      </div>
+      <p class="hint" id="filter-set-hint">Berlaku untuk ringkasan dan tabel sesi.</p>
+      <p class="hint" id="overview-basis">Rata-rata dan grafik memakai sesi utama lengkap terakhir dari tiap partisipan di tiap set. Sesi latihan tidak dihitung.</p>
       <p id="overview-status" class="status" role="status">Memuat data...</p>
       <div id="overview-body" hidden>
         <dl class="counts">
@@ -156,6 +201,12 @@
           <div><dt>Sesi utama</dt><dd id="count-sessions"></dd></div>
           <div><dt>Dipakai di ringkasan</dt><dd id="count-used"></dd></div>
         </dl>
+        <div id="missing-sets" hidden>
+          <h3>Belum lengkap di semua set aktif</h3>
+          <p class="hint">Partisipan yang sudah menyelesaikan sesi utama di satu set aktif atau lebih, tetapi belum di set aktif lainnya. Selama penelitian berjalan, ini wajar untuk partisipan yang belum selesai. Juga bisa berarti ID diketik berbeda.</p>
+          <p id="missing-none" class="empty" hidden>Semua partisipan sudah menyelesaikan sesi utama di semua set aktif.</p>
+          <ul id="missing-list"></ul>
+        </div>
         <p id="overview-empty" class="empty" hidden>Belum ada sesi utama yang selesai. Ringkasan muncul setelah partisipan menyelesaikan tes dengan mode latihan nonaktif.</p>
         <div id="overview-data">
           <table class="means">
@@ -229,6 +280,14 @@
     <!-- CSV export -->
     <section class="block" aria-labelledby="export-title">
       <h2 id="export-title">Unduh data (CSV)</h2>
+      <div class="filters">
+        <div>
+          <label for="export-set">Set</label>
+          <select id="export-set">
+            <option value="">Semua set</option>
+          </select>
+        </div>
+      </div>
       <label class="check">
         <input id="export-trial" type="checkbox">
         <span>Sertakan sesi latihan</span>
@@ -243,6 +302,10 @@
       <h2 id="glossary-title" tabindex="-1">Penjelasan istilah</h2>
       <dl class="glossary">
         <div>
+          <dt>Set <code>set_code</code></dt>
+          <dd>Kode set tes tempat sesi dikerjakan. Tiap set punya pengaturannya sendiri, dan satu partisipan bisa mengerjakan beberapa set. Urutan set ditentukan peneliti, tidak diatur aplikasi. Untuk membandingkan set per partisipan, pasangkan sesi dengan ID partisipan yang sama di CSV.</dd>
+        </div>
+        <div>
           <dt>Sesi utama dan sesi latihan <code>is_trial</code></dt>
           <dd>Setiap kunjungan dimulai dengan sesi latihan (sampai jumlah sesi latihan yang diatur), lalu sesi utama. Sesi latihan disimpan dengan <code>is_trial = 1</code>. Sesi latihan tidak masuk ringkasan dan grafik, dan disembunyikan di tabel serta CSV kecuali dicentang.</dd>
         </div>
@@ -252,7 +315,7 @@
         </div>
         <div>
           <dt>Kunjungan <code>visit_id</code></dt>
-          <dd>Kode yang sama untuk semua sesi dari satu kali partisipan mengisi formulir, sehingga terlihat latihan mana yang mendahului sesi utama mana. Kosong untuk sesi lama.</dd>
+          <dd>Kode yang sama untuk semua sesi dari satu kali partisipan mengisi formulir, sehingga terlihat latihan mana yang mendahului sesi utama mana. Satu kunjungan selalu dalam satu set. Kosong untuk sesi lama.</dd>
         </div>
         <div>
           <dt>Status <code>status</code></dt>
@@ -260,11 +323,11 @@
         </div>
         <div>
           <dt>Percobaan ke- <code>attempt_no</code></dt>
-          <dd>Urutan sesi untuk ID partisipan yang sama, dihitung terpisah untuk sesi latihan dan sesi utama, di semua kunjungan. ID dicocokkan tanpa memperhatikan huruf besar kecil dan spasi di awal atau akhir.</dd>
+          <dd>Urutan sesi untuk ID partisipan yang sama di set yang sama, dihitung terpisah untuk sesi latihan dan sesi utama, di semua kunjungan. ID dicocokkan tanpa memperhatikan huruf besar kecil dan spasi di awal atau akhir.</dd>
         </div>
         <div>
           <dt>Partisipan, sesi utama, dipakai di ringkasan</dt>
-          <dd>Partisipan: jumlah ID berbeda di sesi utama. Sesi utama: jumlah semua sesi utama, termasuk yang dihentikan. Dipakai di ringkasan: jumlah sesi yang dipakai untuk rata-rata dan grafik, yaitu sesi utama lengkap terakhir dari tiap partisipan.</dd>
+          <dd>Partisipan: jumlah ID berbeda di sesi utama. Sesi utama: jumlah semua sesi utama, termasuk yang dihentikan. Dipakai di ringkasan: jumlah sesi yang dipakai untuk rata-rata dan grafik, yaitu sesi utama lengkap terakhir dari tiap partisipan di tiap set. Semua angka ini mengikuti filter set.</dd>
         </div>
         <div>
           <dt>n</dt>
