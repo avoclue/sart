@@ -7,7 +7,6 @@ export const BLANK_MS = 200;
 // The 3-2-1 countdown before every session replaces a silent start delay (PLAN.md §9 D32).
 export const COUNTDOWN_FROM = 3;
 export const COUNTDOWN_STEP_MS = 1000;
-export const START_DELAY_MS = 1000;
 export const ANTICIPATION_MS = 100;
 export const FEEDBACK_PAUSE_MS = 1000;
 export const FEEDBACK_MODES = ['off', 'errors', 'all'];

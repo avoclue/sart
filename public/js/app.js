@@ -1,8 +1,9 @@
 // Participant app: screens, input and timing. All scoring lives in sart.js.
 
 import {
-  START_DELAY_MS, FEEDBACK_PAUSE_MS, generateSequence, generateFontSizes, fontScale, responseWindowMs, createTrial,
-  registerPress, outcomeOf, scoreTrial, summarize, feedbackFor, estimateMinutes, combineInputTypes,
+  COUNTDOWN_FROM, COUNTDOWN_STEP_MS, FEEDBACK_PAUSE_MS, generateSequence, generateFontSizes, fontScale,
+  responseWindowMs, cueOffsetMs, createTrial, registerPress, outcomeOf, scoreTrial, summarize, feedbackFor,
+  estimateMinutes, combineInputTypes,
 } from './sart.js';
 import { API_BASE } from './config.js';
 
@@ -10,11 +11,15 @@ const FEEDBACK = {
   correct: { title: 'Benar', reason: '', kind: 'correct' },
   commission: { title: 'Salah', reason: 'Jangan tekan saat angka 3 muncul.', kind: 'wrong' },
   omission: { title: 'Salah', reason: 'Tekan untuk setiap angka selain 3.', kind: 'wrong' },
+  early: { title: 'Salah', reason: 'Tunggu sampai simbol ⊗ muncul, lalu tekan.', kind: 'wrong' },
 };
+// In 'wait_mask' mode a miss means the participant did not press while the mask showed.
+const OMISSION_REASON_WAIT_MASK = 'Tekan saat simbol ⊗ muncul setelah angka selain 3.';
 
 const $ = (id) => document.getElementById(id);
 
-const participant = { name: '', id: '', consentAt: null };
+// visitId links every session of one visit (PLAN.md §9 D33).
+const participant = { name: '', id: '', consentAt: null, visitId: null };
 let settings = null;
 let run = null;
 let pendingResult = null;
@@ -47,7 +52,7 @@ $('identity-form').addEventListener('submit', (event) => {
     firstInvalid.focus();
     return;
   }
-  Object.assign(participant, { name, id, consentAt: new Date().toISOString() });
+  Object.assign(participant, { name, id, consentAt: new Date().toISOString(), visitId: crypto.randomUUID() });
   openInstructions();
 });
 
@@ -77,6 +82,10 @@ async function openInstructions() {
   $('feedback-note').textContent = feedbackMode === 'all'
     ? 'Setiap selesai satu angka, akan muncul tulisan "Benar" atau "Salah". Jika salah, alasannya ikut ditampilkan.'
     : 'Jika jawaban Anda keliru, akan muncul tulisan "Salah" beserta alasannya.';
+  const waitMask = settings.responseMode === 'wait_mask';
+  $('step-press').hidden = waitMask;
+  $('step-press-wait').hidden = !waitMask;
+  $('mask-note').hidden = settings.maskMs === 0 || waitMask;
   $('duration-note').textContent = `Tes berlangsung sekitar ${estimateMinutes(settings)} menit.`;
   $('settings-loading').hidden = true;
   $('instructions-body').hidden = false;
@@ -94,14 +103,34 @@ function setStimulus(text, scale = 1) {
   $('stimulus').className = 'stimulus';
   $('stimulus').style.setProperty('--digit-scale', scale);
   $('stimulus-reason').textContent = '';
+  $('mask').hidden = true;
+}
+
+// The mask (circle with a diagonal cross) replaces the digit (PLAN.md §9 D30).
+function showMask() {
+  setStimulus('');
+  $('mask').hidden = false;
 }
 
 function showFeedback(key) {
-  const { title, reason, kind } = FEEDBACK[key];
-  $('stimulus').textContent = title;
+  const { title, kind } = FEEDBACK[key];
+  const reason = key === 'omission' && run.settings.responseMode === 'wait_mask'
+    ? OMISSION_REASON_WAIT_MASK
+    : FEEDBACK[key].reason;
+  setStimulus(title);
   $('stimulus').className = `stimulus feedback feedback-${kind}`;
-  $('stimulus').style.setProperty('--digit-scale', 1);
   $('stimulus-reason').textContent = reason;
+}
+
+// 3, 2, 1 before the first digit, and again when the test resumes (PLAN.md §9 D32).
+function countdown(then) {
+  for (let i = 0; i < COUNTDOWN_FROM; i++) {
+    later(i * COUNTDOWN_STEP_MS, () => setStimulus(String(COUNTDOWN_FROM - i)));
+  }
+  later(COUNTDOWN_FROM * COUNTDOWN_STEP_MS, () => {
+    setStimulus('');
+    then();
+  });
 }
 
 function clearTimers() {
@@ -135,7 +164,7 @@ function startTest() {
   setStimulus('');
   show('screen-test');
   $('test-area').focus();
-  later(START_DELAY_MS, beginTrial);
+  countdown(beginTrial);
 }
 
 function beginTrial() {
@@ -149,22 +178,26 @@ function beginTrial() {
   setStimulus(String(run.current.digit), fontSizePt ? fontScale(fontSizePt) : 1);
   run.onset = performance.now();
   run.accepting = true;
-  const { displayDurationMs } = run.settings;
+  const { displayDurationMs, maskMs } = run.settings;
   later(displayDurationMs, () => {
-    // Keep feedback that was shown at the press; otherwise blank the digit.
-    if (!$('stimulus').classList.contains('feedback')) setStimulus('');
+    // Keep feedback that was shown at the press; otherwise mask or blank the digit.
+    if ($('stimulus').classList.contains('feedback')) return;
+    if (maskMs > 0) showMask();
+    else setStimulus('');
   });
-  later(responseWindowMs(displayDurationMs), endWindow);
+  later(responseWindowMs(displayDurationMs, maskMs), endWindow);
 }
 
 function onPress(inputType) {
   if (!run || run.paused || !run.accepting) return;
-  const rtMs = performance.now() - run.onset;
+  // RT from the cue: the digit in classic mode, the mask in 'wait_mask' mode (PLAN.md §9 D31).
+  const { displayDurationMs, responseMode } = run.settings;
+  const rtMs = performance.now() - run.onset - cueOffsetMs(displayDurationMs, responseMode);
   const isFirst = !run.current.responded;
-  run.current = registerPress(run.current, rtMs);
+  run.current = registerPress(run.current, rtMs, responseMode);
   run.inputTypes.push(inputType);
   if (isFirst) {
-    const feedback = feedbackFor(outcomeOf(run.current.isTarget, true), run.feedbackMode);
+    const feedback = feedbackFor(outcomeOf(run.current.isTarget, true, run.current.early), run.feedbackMode);
     if (feedback) showFeedback(feedback);
   }
 }
@@ -227,7 +260,7 @@ function resumeTest() {
   $('end-dialog').close();
   run.paused = false;
   $('test-area').focus();
-  later(START_DELAY_MS, beginTrial);
+  countdown(beginTrial);
 }
 
 $('end-cancel').addEventListener('click', resumeTest);
@@ -251,6 +284,10 @@ function finishTest(status) {
       participantName: participant.name,
       participantId: participant.id,
       status,
+      // Until the practice flow is in place, the study-wide practice switch decides the kind.
+      sessionKind: run.settings.trialMode ? 'practice' : 'main',
+      practiceNo: run.settings.trialMode ? 1 : null,
+      visitId: participant.visitId,
       consentAt: participant.consentAt,
       settings: {
         displayDurationMs: run.settings.displayDurationMs,
@@ -258,6 +295,8 @@ function finishTest(status) {
         targetFrequency: run.settings.targetFrequency,
         randomFontSize: run.settings.randomFontSize,
         balancedDigits: run.settings.balancedDigits,
+        maskMs: run.settings.maskMs,
+        responseMode: run.settings.responseMode,
       },
       device: {
         screenWidth: window.screen.width,
