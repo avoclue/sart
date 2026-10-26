@@ -10,7 +10,7 @@ identity form (no login), take the test, and the result is saved. Test settings
 are admin-only.
 
 The design and open decisions are in `PLAN.md`. Read it before you change anything.
-Building has started (engine and backend first). `DESIGN.md` holds the UI direction.
+The app is built: participant pages, admin page and backend. `DESIGN.md` holds the UI direction.
 
 ## Principles
 
@@ -19,10 +19,11 @@ Building has started (engine and backend first). `DESIGN.md` holds the UI direct
 - **Free tiers only.** Do not introduce paid services.
 - **Participants never see or change settings.** Settings come from the backend.
   The frontend only reads them.
-- **Scoring must match the reference** (see `PLAN.md` §2): correct hits, commission
-  errors, omission errors, and accuracy = (hits + correct withholds) / total trials.
-  Do not copy the reference's late-press double-counting bug. Every trial is scored
-  exactly once.
+- **Scoring must match the reference** (see `PLAN.md` §2) in the default "Klasik" response
+  mode: correct hits, commission errors, omission errors, and accuracy = (hits + correct
+  withholds) / total trials. Do not copy the reference's late-press double-counting bug.
+  Every trial is scored exactly once. The "Tunggu mask" mode is a deliberate, documented
+  variant with an extra `early` outcome (`PLAN.md` §9 D31); keep it separate from Klasik.
 - Keep the SART engine (sequence generation, trial logic, scoring) as pure
   functions, separate from DOM code, so it can be unit-tested with `node --test`.
 
