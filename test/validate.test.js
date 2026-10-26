@@ -17,8 +17,11 @@ function body(overrides = {}) {
     participantName: ' Budi ',
     participantId: ' P01 ',
     status: 'completed',
+    sessionKind: 'main',
+    practiceNo: null,
+    visitId: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b',
     consentAt: '2026-10-25T10:00:00.000Z',
-    settings: { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: false },
+    settings: { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: false, maskMs: 0, responseMode: 'classic' },
     device: { screenWidth: 1280, screenHeight: 800, inputType: 'keyboard' },
     tabHiddenCount: 0,
     trials: trialsFor(digits),
@@ -48,7 +51,7 @@ test('rejects missing name or ID', () => {
 });
 
 test('rejects settings outside the allowed options', () => {
-  const settings = { displayDurationMs: 300, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: false };
+  const settings = { displayDurationMs: 300, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: false, maskMs: 0, responseMode: 'classic' };
   assert.throws(() => validateResult(body({ settings })), ValidationError);
 });
 
@@ -70,7 +73,7 @@ test('rejects RTs outside the response window and inconsistent presses', () => {
 });
 
 test('font sizes must match the randomFontSize setting', () => {
-  const on = { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: true, balancedDigits: false };
+  const on = { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: true, balancedDigits: false, maskMs: 0, responseMode: 'classic' };
   const sized = trialsFor(digits).map((t, i) => ({ ...t, fontSizePt: [48, 72, 94, 100, 120][i % 5] }));
   assert.equal(validateResult(body({ settings: on, trials: sized })).trials[1].fontSizePt, 72);
   assert.throws(() => validateResult(body({ settings: on })), ValidationError);
@@ -81,7 +84,7 @@ test('font sizes must match the randomFontSize setting', () => {
 });
 
 test('balanced sessions must have the non-3 digits equally often', () => {
-  const on = { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: true };
+  const on = { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: true, maskMs: 0, responseMode: 'classic' };
   // 45 non-3 digits over 8 digits: five appear 6 times and three appear 5 times.
   const balanced = [...Array(5).fill(3), ...[1, 2, 4, 5, 6, 7, 8, 9].flatMap((d, i) => Array(i < 5 ? 6 : 5).fill(d))];
   assert.equal(validateResult(body({ settings: on, trials: trialsFor(balanced) })).trials.length, 50);
@@ -97,11 +100,14 @@ test('rejects out-of-order trial numbers', () => {
 });
 
 test('admin settings need a boolean trialMode and a known feedbackMode', () => {
-  const s = { displayDurationMs: 250, totalTrials: 200, targetFrequency: 0.3, randomFontSize: true, balancedDigits: false };
-  const full = { ...s, trialMode: true, feedbackMode: 'errors' };
+  const s = { displayDurationMs: 250, totalTrials: 200, targetFrequency: 0.3, randomFontSize: true, balancedDigits: false, maskMs: 0, responseMode: 'classic' };
+  const full = { ...s, trialMode: true, feedbackMode: 'errors', practiceSessions: 2, practiceTrials: 18 };
   assert.deepEqual(validateAdminSettings(full), full);
   assert.throws(() => validateAdminSettings({ ...full, trialMode: 1 }), ValidationError);
   assert.throws(() => validateAdminSettings({ ...full, feedbackMode: 'some' }), ValidationError);
+  assert.throws(() => validateAdminSettings({ ...full, practiceSessions: 0 }), /minimal 1 sesi latihan/);
+  assert.throws(() => validateAdminSettings({ ...full, practiceTrials: 9 }), /angka per sesi latihan/);
+  assert.throws(() => validateAdminSettings({ ...full, maskMs: 0, responseMode: 'wait_mask' }), /butuh mask/);
 });
 
 test('toWib converts UTC to Asia/Jakarta time', () => {
@@ -112,4 +118,34 @@ test('toWib converts UTC to Asia/Jakarta time', () => {
 test('toCsv quotes cells with commas, quotes and newlines', () => {
   const out = toCsv([{ header: 'a', value: (r) => r.a }], [{ a: 'x, "y"' }, { a: null }]);
   assert.equal(out, 'a\r\n"x, ""y"""\r\n\r\n');
+});
+
+test('practice and main sessions carry their kind, practice number and visit', () => {
+  const practice = validateResult(body({ sessionKind: 'practice', practiceNo: 2 }));
+  assert.equal(practice.sessionKind, 'practice');
+  assert.equal(practice.practiceNo, 2);
+  assert.equal(validateResult(body()).practiceNo, null);
+  assert.throws(() => validateResult(body({ sessionKind: 'practice', practiceNo: 0 })), /practiceNo/);
+  assert.throws(() => validateResult(body({ sessionKind: 'practice', practiceNo: 6 })), /practiceNo/);
+  assert.throws(() => validateResult(body({ practiceNo: 1 })), /main session has no practiceNo/);
+  assert.throws(() => validateResult(body({ sessionKind: 'trial' })), /sessionKind/);
+  assert.throws(() => validateResult(body({ visitId: 'abc' })), /visitId/);
+});
+
+test('mask widens the RT window; wait_mask allows negative RTs and scores them early', () => {
+  const masked = { displayDurationMs: 250, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: false, maskMs: 900, responseMode: 'classic' };
+  assert.equal(validateResult(body({ settings: masked, trials: trialsFor(digits, 1100) })).trials[5].outcome, 'hit');
+  assert.throws(() => validateResult(body({ settings: masked, trials: trialsFor(digits, 1300) })), /rtMs/);
+  assert.throws(() => validateResult(body({ settings: masked, trials: trialsFor(digits, -10) })), /rtMs/);
+
+  const wait = { ...masked, responseMode: 'wait_mask' };
+  const trials = trialsFor(digits, 300);
+  trials[5] = { ...trials[5], rtMs: -120 };
+  const r = validateResult(body({ settings: wait, trials }));
+  assert.equal(r.trials[5].outcome, 'early');
+  assert.equal(r.trials[6].outcome, 'hit');
+  assert.throws(() => validateResult(body({ settings: wait, trials: trialsFor(digits, -300) })), /rtMs/);
+  assert.equal(validateResult(body({ settings: wait, trials: trialsFor(digits, 1000) })).trials[5].outcome, 'hit');
+  assert.throws(() => validateResult(body({ settings: wait, trials: trialsFor(digits, 1100) })), /rtMs/);
+  assert.throws(() => validateResult(body({ settings: { ...wait, maskMs: 0 } })), /butuh mask/);
 });

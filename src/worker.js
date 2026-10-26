@@ -67,6 +67,10 @@ async function getSettings(env) {
     feedbackMode: row.feedback_mode,
     randomFontSize: row.random_font_size === 1,
     balancedDigits: row.balanced_digits === 1,
+    maskMs: row.mask_ms,
+    responseMode: row.response_mode,
+    practiceSessions: row.practice_sessions,
+    practiceTrials: row.practice_trials,
   };
 }
 
@@ -74,10 +78,12 @@ async function putSettings(request, env) {
   const s = validateAdminSettings(await readJson(request));
   await env.DB.prepare(
     `UPDATE settings SET display_duration_ms = ?, total_trials = ?, target_frequency = ?,
-       trial_mode = ?, feedback_mode = ?, random_font_size = ?, balanced_digits = ?, updated_at = ? WHERE id = 1`,
+       trial_mode = ?, feedback_mode = ?, random_font_size = ?, balanced_digits = ?, mask_ms = ?,
+       response_mode = ?, practice_sessions = ?, practice_trials = ?, updated_at = ? WHERE id = 1`,
   ).bind(
     s.displayDurationMs, s.totalTrials, s.targetFrequency, s.trialMode ? 1 : 0, s.feedbackMode,
-    s.randomFontSize ? 1 : 0, s.balancedDigits ? 1 : 0, new Date().toISOString(),
+    s.randomFontSize ? 1 : 0, s.balancedDigits ? 1 : 0, s.maskMs, s.responseMode,
+    s.practiceSessions, s.practiceTrials, new Date().toISOString(),
   ).run();
   return json(await getSettings(env));
 }
@@ -86,12 +92,13 @@ async function postResult(request, env) {
   const r = validateResult(await readJson(request));
   const summary = summarize(r.trials);
   const id = crypto.randomUUID();
-  // The server decides practice vs real from its own setting, never from the browser.
-  // A session that spans a trial-mode switch is labelled with the setting at save time.
+  // Practice sessions of the visit flow are saved as practice (PLAN.md §9 D33). The participant
+  // page only offers a main session while the practice period (trial mode) is off; a main
+  // session already running when the admin turns it on is kept as a main session.
   const current = await getSettings(env);
-  const isTrial = current.trialMode ? 1 : 0;
-  // Feedback is only shown in trial mode, so real sessions always store 'off'.
-  const feedbackMode = current.trialMode ? current.feedbackMode : 'off';
+  const isTrial = r.sessionKind === 'practice' ? 1 : 0;
+  // Feedback is only shown in practice sessions, so main sessions always store 'off'.
+  const feedbackMode = isTrial ? current.feedbackMode : 'off';
 
   // The attempt number is computed inside the INSERT so it is atomic (PLAN.md §9 D4).
   const insertSession = env.DB.prepare(
@@ -101,8 +108,9 @@ async function postResult(request, env) {
        correct_hits, commission_errors, omission_errors, correct_withholds, accuracy, mean_rt_ms,
        sd_rt_ms, rt_cv, commission_rate, omission_rate, anticipation_count, user_agent,
        screen_width, screen_height, input_type, tab_hidden_count, feedback_mode, random_font_size,
-       balanced_digits)
-     SELECT ?, ?, ?, ?, ?, COUNT(*) + 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+       balanced_digits, mask_ms, response_mode, early_count, practice_no, visit_id)
+     SELECT ?, ?, ?, ?, ?, COUNT(*) + 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+       ?, ?, ?, ?, ?
      FROM sessions WHERE participant_id = ? AND is_trial = ?`,
   ).bind(
     id, new Date().toISOString(), r.participantId, r.participantIdRaw, r.participantName, isTrial,
@@ -112,7 +120,8 @@ async function postResult(request, env) {
     summary.meanRtMs, summary.sdRtMs, summary.rtCv, summary.commissionRate, summary.omissionRate,
     summary.anticipationCount, request.headers.get('User-Agent')?.slice(0, 500) ?? null,
     r.screenWidth, r.screenHeight, r.inputType, r.tabHiddenCount, feedbackMode,
-    r.settings.randomFontSize ? 1 : 0, r.settings.balancedDigits ? 1 : 0, r.participantId, isTrial,
+    r.settings.randomFontSize ? 1 : 0, r.settings.balancedDigits ? 1 : 0, r.settings.maskMs,
+    r.settings.responseMode, summary.earlyCount, r.practiceNo, r.visitId, r.participantId, isTrial,
   );
 
   // All trials go in one statement as a JSON array. One row of bound values per trial would
@@ -144,7 +153,8 @@ async function listSessions(url, env) {
 
 async function listTrials(url, env) {
   const { results } = await env.DB.prepare(
-    `SELECT t.*, s.participant_id, s.attempt_no, s.is_trial, s.status, s.feedback_mode, s.random_font_size, s.balanced_digits
+    `SELECT t.*, s.participant_id, s.attempt_no, s.is_trial, s.status, s.feedback_mode, s.random_font_size, s.balanced_digits,
+       s.mask_ms, s.response_mode, s.practice_no, s.visit_id
      FROM trials t JOIN sessions s ON s.id = t.session_id ${trialFilter(url, 's.')}
      ORDER BY s.created_at, t.trial_no`,
   ).all();

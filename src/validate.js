@@ -1,12 +1,15 @@
 // Validation of request bodies. Pure functions, so they can be unit-tested with node --test.
 
 import {
-  settingsProblem, FEEDBACK_MODES, NON_TARGET_DIGITS, FONT_SIZES_PT, BLANK_MS, targetCount, createTrial, registerPress, scoreTrial,
+  settingsProblem, adminSettingsProblem, afterDigitMs, SETTING_LIMITS, FEEDBACK_MODES,
+  NON_TARGET_DIGITS, FONT_SIZES_PT, targetCount, createTrial, registerPress, scoreTrial,
 } from '../public/js/sart.js';
 
 export const INPUT_TYPES = ['keyboard', 'touch', 'mixed', 'none'];
 // Timer callbacks can fire slightly after the window closes; allow some slack.
 const RT_SLACK_MS = 100;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class ValidationError extends Error {}
 
@@ -37,13 +40,14 @@ export function normaliseParticipantId(raw) {
 
 export function validateSettings(body) {
   if (!body || typeof body !== 'object') fail('settings must be an object');
-  const { displayDurationMs, totalTrials, targetFrequency } = body;
-  const problem = settingsProblem({ displayDurationMs, totalTrials, targetFrequency });
+  const { displayDurationMs, totalTrials, targetFrequency, maskMs, responseMode } = body;
+  const problem = settingsProblem({ displayDurationMs, totalTrials, targetFrequency, maskMs, responseMode });
   if (problem) fail(problem);
+  if (maskMs === undefined || responseMode === undefined) fail('maskMs and responseMode are required');
   if (typeof body.randomFontSize !== 'boolean') fail('randomFontSize must be a boolean');
   if (typeof body.balancedDigits !== 'boolean') fail('balancedDigits must be a boolean');
   return {
-    displayDurationMs, totalTrials, targetFrequency,
+    displayDurationMs, totalTrials, targetFrequency, maskMs, responseMode,
     randomFontSize: body.randomFontSize, balancedDigits: body.balancedDigits,
   };
 }
@@ -52,18 +56,31 @@ export function validateAdminSettings(body) {
   const settings = validateSettings(body);
   if (typeof body.trialMode !== 'boolean') fail('trialMode must be a boolean');
   if (!FEEDBACK_MODES.includes(body.feedbackMode)) fail('invalid feedbackMode');
-  return { ...settings, trialMode: body.trialMode, feedbackMode: body.feedbackMode };
+  const all = {
+    ...settings,
+    trialMode: body.trialMode,
+    feedbackMode: body.feedbackMode,
+    practiceSessions: body.practiceSessions,
+    practiceTrials: body.practiceTrials,
+  };
+  const problem = adminSettingsProblem(all);
+  if (problem) fail(problem);
+  return all;
 }
 
 // Rebuilds every trial from its digit and presses, so the outcome is
 // always computed by the engine and never taken from the browser.
 function validateTrials(rawTrials, settings, status) {
   if (!Array.isArray(rawTrials)) fail('trials must be an array');
-  const { displayDurationMs, totalTrials, targetFrequency } = settings;
+  const { displayDurationMs, totalTrials, targetFrequency, maskMs, responseMode } = settings;
   if (status === 'completed' && rawTrials.length !== totalTrials) fail('completed session must have every trial');
   if (rawTrials.length > totalTrials) fail('too many trials');
 
-  const maxRt = displayDurationMs + BLANK_MS + RT_SLACK_MS;
+  // RT is measured from the cue: digit onset in classic mode, mask onset in 'wait_mask' mode,
+  // where a press during the digit has a negative RT (PLAN.md §9 D31).
+  const waitMask = responseMode === 'wait_mask';
+  const minRt = waitMask ? -displayDurationMs : 0;
+  const maxRt = (waitMask ? 0 : displayDurationMs) + afterDigitMs(maskMs) + RT_SLACK_MS;
   const trials = rawTrials.map((raw, i) => {
     if (!raw || typeof raw !== 'object') fail(`trial ${i + 1} must be an object`);
     if (raw.trialNo !== i + 1) fail(`trial ${i + 1} has the wrong trialNo`);
@@ -73,10 +90,10 @@ function validateTrials(rawTrials, settings, status) {
 
     let trial = createTrial(raw.trialNo, raw.digit);
     if (raw.responded) {
-      if (typeof raw.rtMs !== 'number' || !Number.isFinite(raw.rtMs) || raw.rtMs < 0 || raw.rtMs > maxRt) {
+      if (typeof raw.rtMs !== 'number' || !Number.isFinite(raw.rtMs) || raw.rtMs < minRt || raw.rtMs > maxRt) {
         fail(`trial ${i + 1} has an invalid rtMs`);
       }
-      trial = registerPress(trial, raw.rtMs);
+      trial = registerPress(trial, raw.rtMs, responseMode);
       trial = { ...trial, extraPresses: raw.extraPresses };
     } else if (raw.rtMs !== null || raw.extraPresses !== 0) {
       fail(`trial ${i + 1} has presses but responded is false`);
@@ -111,6 +128,15 @@ export function validateResult(body) {
   if (typeof body.consentAt !== 'string' || Number.isNaN(Date.parse(body.consentAt))) fail('consentAt must be a date');
 
   const settings = validateSettings(body.settings);
+  // Practice or main session within one visit (PLAN.md §9 D33).
+  if (!['practice', 'main'].includes(body.sessionKind)) fail('sessionKind must be practice or main');
+  const practiceNo = body.sessionKind === 'practice' ? body.practiceNo : null;
+  if (body.sessionKind === 'practice'
+    && (!Number.isInteger(practiceNo) || practiceNo < 1 || practiceNo > SETTING_LIMITS.practiceSessions.max)) {
+    fail('invalid practiceNo');
+  }
+  if (body.sessionKind === 'main' && body.practiceNo != null) fail('a main session has no practiceNo');
+  if (typeof body.visitId !== 'string' || !UUID.test(body.visitId)) fail('visitId must be a UUID');
   const device = body.device ?? {};
   if (!INPUT_TYPES.includes(device.inputType)) fail('invalid device.inputType');
 
@@ -119,6 +145,9 @@ export function validateResult(body) {
     participantIdRaw,
     participantId: normaliseParticipantId(participantIdRaw),
     status: body.status,
+    sessionKind: body.sessionKind,
+    practiceNo,
+    visitId: body.visitId.toLowerCase(),
     consentAt: new Date(body.consentAt).toISOString(),
     settings,
     screenWidth: optionalInt(device.screenWidth, 'device.screenWidth'),
