@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   TARGET_DIGIT, targetCount, generateSequence, responseWindowMs,
   createTrial, registerPress, scoreTrial, summarize,
-  feedbackFor, estimateMinutes, combineInputTypes, settingsProblem, FONT_SIZES_PT, generateFontSizes, fontScale,
+  feedbackFor, estimateMinutes, combineInputTypes, settingsProblem, balancedCounts, NON_TARGET_DIGITS, FONT_SIZES_PT, generateFontSizes, fontScale,
 } from '../public/js/sart.js';
 
 function seededRandom(seed) {
@@ -36,7 +36,7 @@ test('targetCount rounds to the nearest whole number, halves up', () => {
 
 test('generateSequence has the exact number of targets and only valid digits', () => {
   for (const [n, f] of [[50, 0.1], [100, 0.2], [200, 0.3]]) {
-    const seq = generateSequence(n, f, seededRandom(n));
+    const seq = generateSequence(n, f, { random: seededRandom(n) });
     assert.equal(seq.length, n);
     assert.equal(seq.filter((d) => d === TARGET_DIGIT).length, targetCount(n, f));
     assert.ok(seq.every((d) => Number.isInteger(d) && d >= 1 && d <= 9));
@@ -44,7 +44,7 @@ test('generateSequence has the exact number of targets and only valid digits', (
 });
 
 test('generateSequence shuffles the targets', () => {
-  const seq = generateSequence(100, 0.2, seededRandom(7));
+  const seq = generateSequence(100, 0.2, { random: seededRandom(7) });
   assert.notDeepEqual(seq.slice(0, 20), Array(20).fill(TARGET_DIGIT));
 });
 
@@ -177,4 +177,37 @@ test('settingsProblem rejects decimals in trials, extra decimals in percent and 
   assert.match(settingsProblem({ ...ok, displayDurationMs: 300 }), /Durasi/);
   assert.match(settingsProblem({ ...ok, totalTrials: 10, targetFrequency: 0.04 }), /tidak ada angka 3/);
   assert.equal(settingsProblem({ ...ok, totalTrials: 10, targetFrequency: 0.05 }), null);
+});
+
+const countsOf = (seq) => new Map(NON_TARGET_DIGITS.map((d) => [d, seq.filter((x) => x === d).length]));
+
+test('balanced sequence at 225 and 11.1% is classic SART: every digit 25 times', () => {
+  const seq = generateSequence(225, 0.111, { balanced: true, random: seededRandom(11) });
+  assert.equal(seq.length, 225);
+  for (let d = 1; d <= 9; d++) assert.equal(seq.filter((x) => x === d).length, 25);
+});
+
+test('balanced non-3 counts differ by at most 1 when they cannot divide evenly', () => {
+  const seq = generateSequence(100, 0.2, { balanced: true, random: seededRandom(5) });
+  assert.equal(seq.filter((x) => x === TARGET_DIGIT).length, 20);
+  const counts = [...countsOf(seq).values()];
+  assert.equal(counts.reduce((a, b) => a + b, 0), 80);
+  assert.deepEqual(counts, Array(8).fill(10));
+  const odd = [...countsOf(generateSequence(53, 0.2, { balanced: true, random: seededRandom(2) })).values()];
+  assert.equal(odd.reduce((a, b) => a + b, 0), 42);
+  assert.ok(Math.max(...odd) - Math.min(...odd) <= 1);
+});
+
+test('balancedCounts gives the extras to different digits on different draws', () => {
+  const picks = new Set();
+  for (let seed = 1; seed < 30; seed++) {
+    const counts = balancedCounts(9, seededRandom(seed));
+    picks.add([...counts].find(([, c]) => c === 2)[0]);
+  }
+  assert.ok(picks.size > 3);
+});
+
+test('balanced sequences are still shuffled', () => {
+  const seq = generateSequence(225, 0.111, { balanced: true, random: seededRandom(4) });
+  assert.notDeepEqual(seq.slice(0, 25), Array(25).fill(TARGET_DIGIT));
 });

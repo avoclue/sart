@@ -1,7 +1,7 @@
 // Validation of request bodies. Pure functions, so they can be unit-tested with node --test.
 
 import {
-  settingsProblem, FEEDBACK_MODES, FONT_SIZES_PT, BLANK_MS, targetCount, createTrial, registerPress, scoreTrial,
+  settingsProblem, FEEDBACK_MODES, NON_TARGET_DIGITS, FONT_SIZES_PT, BLANK_MS, targetCount, createTrial, registerPress, scoreTrial,
 } from '../public/js/sart.js';
 
 export const INPUT_TYPES = ['keyboard', 'touch', 'mixed', 'none'];
@@ -41,7 +41,11 @@ export function validateSettings(body) {
   const problem = settingsProblem({ displayDurationMs, totalTrials, targetFrequency });
   if (problem) fail(problem);
   if (typeof body.randomFontSize !== 'boolean') fail('randomFontSize must be a boolean');
-  return { displayDurationMs, totalTrials, targetFrequency, randomFontSize: body.randomFontSize };
+  if (typeof body.balancedDigits !== 'boolean') fail('balancedDigits must be a boolean');
+  return {
+    displayDurationMs, totalTrials, targetFrequency,
+    randomFontSize: body.randomFontSize, balancedDigits: body.balancedDigits,
+  };
 }
 
 export function validateAdminSettings(body) {
@@ -87,6 +91,15 @@ function validateTrials(rawTrials, settings, status) {
   const targets = trials.filter((t) => t.isTarget).length;
   const expected = targetCount(totalTrials, targetFrequency);
   if (status === 'completed' ? targets !== expected : targets > expected) fail('wrong number of target digits');
+
+  // Balanced sessions: no non-3 digit may appear more often than its share allows,
+  // and a completed session must have them all within 1 of each other (PLAN.md §9 D29).
+  if (settings.balancedDigits) {
+    const share = Math.ceil((totalTrials - expected) / NON_TARGET_DIGITS.length);
+    const counts = NON_TARGET_DIGITS.map((d) => trials.filter((t) => t.digit === d).length);
+    if (Math.max(...counts) > share) fail('digits are not balanced');
+    if (status === 'completed' && Math.max(...counts) - Math.min(...counts) > 1) fail('digits are not balanced');
+  }
   return trials;
 }
 

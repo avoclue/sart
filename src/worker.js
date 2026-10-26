@@ -66,6 +66,7 @@ async function getSettings(env) {
     trialMode: row.trial_mode === 1,
     feedbackMode: row.feedback_mode,
     randomFontSize: row.random_font_size === 1,
+    balancedDigits: row.balanced_digits === 1,
   };
 }
 
@@ -73,10 +74,10 @@ async function putSettings(request, env) {
   const s = validateAdminSettings(await readJson(request));
   await env.DB.prepare(
     `UPDATE settings SET display_duration_ms = ?, total_trials = ?, target_frequency = ?,
-       trial_mode = ?, feedback_mode = ?, random_font_size = ?, updated_at = ? WHERE id = 1`,
+       trial_mode = ?, feedback_mode = ?, random_font_size = ?, balanced_digits = ?, updated_at = ? WHERE id = 1`,
   ).bind(
     s.displayDurationMs, s.totalTrials, s.targetFrequency, s.trialMode ? 1 : 0, s.feedbackMode,
-    s.randomFontSize ? 1 : 0, new Date().toISOString(),
+    s.randomFontSize ? 1 : 0, s.balancedDigits ? 1 : 0, new Date().toISOString(),
   ).run();
   return json(await getSettings(env));
 }
@@ -99,8 +100,9 @@ async function postResult(request, env) {
        status, consent_at, display_duration_ms, total_trials, target_frequency, trials_completed,
        correct_hits, commission_errors, omission_errors, correct_withholds, accuracy, mean_rt_ms,
        sd_rt_ms, rt_cv, commission_rate, omission_rate, anticipation_count, user_agent,
-       screen_width, screen_height, input_type, tab_hidden_count, feedback_mode, random_font_size)
-     SELECT ?, ?, ?, ?, ?, COUNT(*) + 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+       screen_width, screen_height, input_type, tab_hidden_count, feedback_mode, random_font_size,
+       balanced_digits)
+     SELECT ?, ?, ?, ?, ?, COUNT(*) + 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
      FROM sessions WHERE participant_id = ? AND is_trial = ?`,
   ).bind(
     id, new Date().toISOString(), r.participantId, r.participantIdRaw, r.participantName, isTrial,
@@ -110,7 +112,7 @@ async function postResult(request, env) {
     summary.meanRtMs, summary.sdRtMs, summary.rtCv, summary.commissionRate, summary.omissionRate,
     summary.anticipationCount, request.headers.get('User-Agent')?.slice(0, 500) ?? null,
     r.screenWidth, r.screenHeight, r.inputType, r.tabHiddenCount, feedbackMode,
-    r.settings.randomFontSize ? 1 : 0, r.participantId, isTrial,
+    r.settings.randomFontSize ? 1 : 0, r.settings.balancedDigits ? 1 : 0, r.participantId, isTrial,
   );
 
   // All trials go in one statement as a JSON array. One row of bound values per trial would
@@ -142,7 +144,7 @@ async function listSessions(url, env) {
 
 async function listTrials(url, env) {
   const { results } = await env.DB.prepare(
-    `SELECT t.*, s.participant_id, s.attempt_no, s.is_trial, s.status, s.feedback_mode, s.random_font_size
+    `SELECT t.*, s.participant_id, s.attempt_no, s.is_trial, s.status, s.feedback_mode, s.random_font_size, s.balanced_digits
      FROM trials t JOIN sessions s ON s.id = t.session_id ${trialFilter(url, 's.')}
      ORDER BY s.created_at, t.trial_no`,
   ).all();

@@ -18,7 +18,7 @@ function body(overrides = {}) {
     participantId: ' P01 ',
     status: 'completed',
     consentAt: '2026-10-25T10:00:00.000Z',
-    settings: { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false },
+    settings: { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: false },
     device: { screenWidth: 1280, screenHeight: 800, inputType: 'keyboard' },
     tabHiddenCount: 0,
     trials: trialsFor(digits),
@@ -48,7 +48,7 @@ test('rejects missing name or ID', () => {
 });
 
 test('rejects settings outside the allowed options', () => {
-  const settings = { displayDurationMs: 300, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false };
+  const settings = { displayDurationMs: 300, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: false };
   assert.throws(() => validateResult(body({ settings })), ValidationError);
 });
 
@@ -70,7 +70,7 @@ test('rejects RTs outside the response window and inconsistent presses', () => {
 });
 
 test('font sizes must match the randomFontSize setting', () => {
-  const on = { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: true };
+  const on = { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: true, balancedDigits: false };
   const sized = trialsFor(digits).map((t, i) => ({ ...t, fontSizePt: [48, 72, 94, 100, 120][i % 5] }));
   assert.equal(validateResult(body({ settings: on, trials: sized })).trials[1].fontSizePt, 72);
   assert.throws(() => validateResult(body({ settings: on })), ValidationError);
@@ -80,6 +80,16 @@ test('font sizes must match the randomFontSize setting', () => {
   assert.equal(validateResult(body()).trials[0].fontSizePt, null);
 });
 
+test('balanced sessions must have the non-3 digits equally often', () => {
+  const on = { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: true };
+  // 45 non-3 digits over 8 digits: five appear 6 times and three appear 5 times.
+  const balanced = [...Array(5).fill(3), ...[1, 2, 4, 5, 6, 7, 8, 9].flatMap((d, i) => Array(i < 5 ? 6 : 5).fill(d))];
+  assert.equal(validateResult(body({ settings: on, trials: trialsFor(balanced) })).trials.length, 50);
+  assert.throws(() => validateResult(body({ settings: on })), ValidationError);
+  assert.equal(validateResult(body({ settings: on, status: 'aborted', trials: trialsFor(balanced.slice(0, 20)) })).trials.length, 20);
+  assert.throws(() => validateResult(body({ settings: on, status: 'aborted', trials: trialsFor(Array(7).fill(5)) })), ValidationError);
+});
+
 test('rejects out-of-order trial numbers', () => {
   const trials = trialsFor(digits);
   trials[1].trialNo = 5;
@@ -87,7 +97,7 @@ test('rejects out-of-order trial numbers', () => {
 });
 
 test('admin settings need a boolean trialMode and a known feedbackMode', () => {
-  const s = { displayDurationMs: 250, totalTrials: 200, targetFrequency: 0.3, randomFontSize: true };
+  const s = { displayDurationMs: 250, totalTrials: 200, targetFrequency: 0.3, randomFontSize: true, balancedDigits: false };
   const full = { ...s, trialMode: true, feedbackMode: 'errors' };
   assert.deepEqual(validateAdminSettings(full), full);
   assert.throws(() => validateAdminSettings({ ...full, trialMode: 1 }), ValidationError);

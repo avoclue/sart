@@ -47,6 +47,7 @@ export const DEFAULT_SETTINGS = {
   trialMode: false,
   feedbackMode: 'off',
   randomFontSize: false,
+  balancedDigits: false,
 };
 
 // Rounded to the nearest whole number, halves up, so 11.1% of 225 gives the classic
@@ -57,19 +58,38 @@ export function targetCount(totalTrials, targetFrequency) {
   return Math.floor(totalTrials * targetFrequency + 0.5 + 1e-9);
 }
 
-export function generateSequence(totalTrials, targetFrequency, random = Math.random) {
-  const targets = targetCount(totalTrials, targetFrequency);
-  const digits = [];
-  for (let i = 0; i < totalTrials; i++) {
-    digits.push(i < targets
-      ? TARGET_DIGIT
-      : NON_TARGET_DIGITS[Math.floor(random() * NON_TARGET_DIGITS.length)]);
-  }
-  for (let i = digits.length - 1; i > 0; i--) {
+function shuffle(items, random) {
+  for (let i = items.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
-    [digits[i], digits[j]] = [digits[j], digits[i]];
+    [items[i], items[j]] = [items[j], items[i]];
   }
-  return digits;
+  return items;
+}
+
+// How many times each non-3 digit appears when digits are balanced (PLAN.md §9 D29):
+// as equal as possible, so counts differ by at most 1. Extras go to random digits.
+export function balancedCounts(nonTargetTrials, random = Math.random) {
+  const base = Math.floor(nonTargetTrials / NON_TARGET_DIGITS.length);
+  const extra = nonTargetTrials % NON_TARGET_DIGITS.length;
+  const lucky = new Set(shuffle([...NON_TARGET_DIGITS], random).slice(0, extra));
+  return new Map(NON_TARGET_DIGITS.map((d) => [d, base + (lucky.has(d) ? 1 : 0)]));
+}
+
+// Without balancing, each non-3 digit is drawn at random, as in the reference.
+// With balancing, the non-3 digits appear equally often; the order is random either way.
+export function generateSequence(totalTrials, targetFrequency, { balanced = false, random = Math.random } = {}) {
+  const targets = targetCount(totalTrials, targetFrequency);
+  const digits = Array(targets).fill(TARGET_DIGIT);
+  if (balanced) {
+    for (const [digit, count] of balancedCounts(totalTrials - targets, random)) {
+      for (let i = 0; i < count; i++) digits.push(digit);
+    }
+  } else {
+    for (let i = targets; i < totalTrials; i++) {
+      digits.push(NON_TARGET_DIGITS[Math.floor(random() * NON_TARGET_DIGITS.length)]);
+    }
+  }
+  return shuffle(digits, random);
 }
 
 // One font size per trial, each drawn with equal chance.

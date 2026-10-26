@@ -61,7 +61,7 @@ const settingFields = {
   targetFrequency: { el: () => $('set-frequency'), parse: parsePercent, format: formatPercent },
   feedbackMode: { el: () => $('set-feedback'), parse: String, format: String },
 };
-const settingChecks = { trialMode: 'set-trial-mode', randomFontSize: 'set-random-font' };
+const settingChecks = { trialMode: 'set-trial-mode', randomFontSize: 'set-random-font', balancedDigits: 'set-balanced' };
 
 function fillSettings(s) {
   for (const [key, field] of Object.entries(settingFields)) field.el().value = field.format(s[key]);
@@ -312,7 +312,7 @@ async function openDetail(s) {
   $('detail-summary').textContent = `${s.participant_name}. ${s.is_trial ? 'Latihan' : 'Utama'}, `
     + `${s.status === 'completed' ? 'selesai' : 'dihentikan'}. Pengaturan: ${s.display_duration_ms} ms, `
     + `${s.total_trials} angka, ${formatPercent(s.target_frequency)}% angka 3, `
-    + `ukuran angka ${s.random_font_size ? 'acak' : 'tetap'}.`;
+    + `ukuran angka ${s.random_font_size ? 'acak' : 'tetap'}, angka ${s.balanced_digits ? 'seimbang' : 'tidak seimbang'}.`;
   $('detail-status').className = 'status';
   $('detail-status').textContent = 'Memuat data per angka...';
   $('detail-status').hidden = false;

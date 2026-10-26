@@ -118,7 +118,7 @@ function startTest() {
   run = {
     settings: { ...settings },
     feedbackMode: practice ? settings.feedbackMode : 'off',
-    sequence: generateSequence(settings.totalTrials, settings.targetFrequency),
+    sequence: generateSequence(settings.totalTrials, settings.targetFrequency, { balanced: settings.balancedDigits }),
     // Drawn up front so a replayed trial (PLAN.md §9 D19) keeps its size.
     fontSizes: settings.randomFontSize ? generateFontSizes(settings.totalTrials) : null,
     trials: [],
@@ -257,6 +257,7 @@ function finishTest(status) {
         totalTrials: run.settings.totalTrials,
         targetFrequency: run.settings.targetFrequency,
         randomFontSize: run.settings.randomFontSize,
+        balancedDigits: run.settings.balancedDigits,
       },
       device: {
         screenWidth: window.screen.width,

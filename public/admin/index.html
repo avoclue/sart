@@ -52,6 +52,10 @@
             <input id="set-random-font" type="checkbox">
             <span>Ukuran angka acak: tiap angka tampil dalam salah satu dari 5 ukuran (40% sampai 100%).</span>
           </label>
+          <label class="check">
+            <input id="set-balanced" type="checkbox">
+            <span>Angka seimbang: angka selain 3 muncul sama banyak.</span>
+          </label>
         </fieldset>
 
         <fieldset>
@@ -268,6 +272,10 @@
         <div>
           <dt>Ukuran angka <code>random_font_size</code>, <code>font_size_pt</code></dt>
           <dd>Jika ukuran angka acak aktif, tiap angka tampil dalam ukuran 48, 72, 94, 100 atau 120 pt (ukuran dari Robertson dkk., 1997). 120 pt adalah ukuran normal, yang lain diperkecil sebanding.</dd>
+        </div>
+        <div>
+          <dt>Angka seimbang <code>balanced_digits</code></dt>
+          <dd>Jika aktif, angka selain 3 muncul sama banyak dalam satu sesi (bila tidak bisa dibagi rata, selisihnya paling banyak 1). Urutannya tetap acak. Dengan 225 angka dan 11,1%, tiap angka 1 sampai 9 muncul tepat 25 kali, seperti SART klasik. Jika tidak aktif, tiap angka selain 3 dipilih acak seperti di tes rujukan, sehingga jumlahnya bisa berbeda-beda. Jumlah angka 3 selalu mengikuti proporsi angka 3, dibulatkan ke bilangan bulat terdekat.</dd>
         </div>
         <div>
           <dt>Umpan balik <code>feedback_mode</code></dt>

@@ -32,12 +32,12 @@ export const SESSION_COLUMNS = [
   col('accuracy'), col('mean_rt_ms'), col('sd_rt_ms'), col('rt_cv'), col('commission_rate'),
   col('omission_rate'), col('anticipation_count'), col('user_agent'), col('screen_width'),
   col('screen_height'), col('input_type'), col('tab_hidden_count'), col('feedback_mode'),
-  col('random_font_size'),
+  col('random_font_size'), col('balanced_digits'),
 ];
 
 export const TRIAL_COLUMNS = [
   col('session_id'), col('participant_id'), col('attempt_no'), col('is_trial'), col('status'),
-  col('feedback_mode'), col('random_font_size'),
+  col('feedback_mode'), col('random_font_size'), col('balanced_digits'),
   col('trial_no'), col('digit'), col('is_target'), col('responded'), col('rt_ms'), col('outcome'),
   col('extra_presses'), col('font_size_pt'),
 ];
