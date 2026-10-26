@@ -175,10 +175,8 @@ function fillSet(set, copiedFrom = null) {
     code.textContent = `${window.location.origin}/?set=${encodeURIComponent(set.code)}`;
     $('set-link').replaceChildren('Tautan untuk partisipan: ', code);
   }
-  $('set-usage').hidden = isNew;
-  $('set-usage').textContent = used
-    ? `Dipakai oleh ${set.sessionCount} sesi, jadi kodenya tidak bisa diubah dan set ini tidak bisa dihapus. Nonaktifkan jika tidak dipakai lagi.`
-    : 'Belum dipakai sesi.';
+  $('set-usage').hidden = isNew || used;
+  $('set-usage').textContent = 'Belum dipakai sesi.';
   $('set-picker').disabled = isNew;
   $('set-add').disabled = isNew;
   $('set-cancel').hidden = !isNew || sets.length === 0;

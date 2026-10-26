@@ -23,11 +23,10 @@
     <!-- Settings -->
     <section class="block" aria-labelledby="settings-title">
       <h2 id="settings-title">Set tes</h2>
-      <p class="hint">Tiap set punya pengaturannya sendiri. Partisipan membuka set lewat tautannya (<code>/?set=kode</code>). Tautan tanpa kode menampilkan daftar set aktif di formulir, dan partisipan harus memilih salah satu.</p>
       <p id="settings-status" class="status" role="status">Memuat set...</p>
       <div id="set-bar" class="set-bar" hidden>
         <div>
-          <label for="set-picker">Set yang diubah</label>
+          <label for="set-picker">Pilih set</label>
           <select id="set-picker"></select>
         </div>
         <button type="button" id="set-add" class="btn-secondary">Tambah set</button>
@@ -44,7 +43,7 @@
             <div>
               <label for="set-label">Label</label>
               <input id="set-label" type="text" autocomplete="off" maxlength="60" aria-describedby="label-hint">
-              <p id="label-hint" class="hint field-hint">Tampil ke partisipan. Pakai nama netral, misalnya "Set B", bukan nama yang menyebut kondisinya.</p>
+              <p id="label-hint" class="hint field-hint">Nama yang ditampilkan ke partisipan.</p>
             </div>
           </div>
           <div class="check-row">
