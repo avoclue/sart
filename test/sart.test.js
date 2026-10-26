@@ -20,12 +20,18 @@ function scored(digit, rtMs = null) {
   return scoreTrial(trial);
 }
 
-test('targetCount floors trials x frequency for every allowed option', () => {
-  assert.equal(targetCount(100, 0.2), 20);
-  assert.equal(targetCount(50, 0.1), 5);
-  assert.equal(targetCount(50, 0.3), 15);
-  assert.equal(targetCount(200, 0.3), 60);
+test('targetCount gives the reference counts for its own options', () => {
+  for (const n of [50, 100, 200]) for (const f of [0.1, 0.2, 0.3]) assert.equal(targetCount(n, f), Math.round(n * f));
   assert.equal(targetCount(100, 0.29), 29);
+});
+
+test('targetCount rounds to the nearest whole number, halves up', () => {
+  assert.equal(targetCount(225, 0.111), 25);
+  assert.equal(targetCount(225, 0.11), 25);
+  assert.equal(targetCount(225, 0.109), 25);
+  assert.equal(targetCount(10, 0.15), 2);
+  assert.equal(targetCount(10, 0.14), 1);
+  assert.equal(targetCount(10, 0.04), 0);
 });
 
 test('generateSequence has the exact number of targets and only valid digits', () => {
@@ -169,5 +175,6 @@ test('settingsProblem rejects decimals in trials, extra decimals in percent and 
   for (const totalTrials of [9, 501, 100.5, '100', NaN]) assert.match(settingsProblem({ ...ok, totalTrials }), /bilangan bulat/);
   for (const targetFrequency of [0.009, 0.501, 0.1115, '0.2', NaN]) assert.match(settingsProblem({ ...ok, targetFrequency }), /Proporsi/);
   assert.match(settingsProblem({ ...ok, displayDurationMs: 300 }), /Durasi/);
-  assert.match(settingsProblem({ ...ok, totalTrials: 10, targetFrequency: 0.05 }), /tidak ada angka 3/);
+  assert.match(settingsProblem({ ...ok, totalTrials: 10, targetFrequency: 0.04 }), /tidak ada angka 3/);
+  assert.equal(settingsProblem({ ...ok, totalTrials: 10, targetFrequency: 0.05 }), null);
 });

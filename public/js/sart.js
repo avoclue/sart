@@ -49,9 +49,12 @@ export const DEFAULT_SETTINGS = {
   randomFontSize: false,
 };
 
+// Rounded to the nearest whole number, halves up, so 11.1% of 225 gives the classic
+// SART's 25 targets (PLAN.md §9 D28). The reference rounds down; for its own nine
+// setting combinations the product is always whole, so both rules agree there.
 export function targetCount(totalTrials, targetFrequency) {
   // The epsilon guards against float products such as 0.29 * 100 = 28.999...
-  return Math.floor(totalTrials * targetFrequency + 1e-9);
+  return Math.floor(totalTrials * targetFrequency + 0.5 + 1e-9);
 }
 
 export function generateSequence(totalTrials, targetFrequency, random = Math.random) {
