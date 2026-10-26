@@ -1,6 +1,7 @@
 // Admin page: settings form, overview, session table, session detail and CSV links.
 
 import { API_BASE } from '../js/config.js';
+import { settingsProblem } from '../js/sart.js';
 import {
   participantCount, realSessionCount, latestCompletedPerParticipant, metricMeans,
   filterSessions, sortSessions,
@@ -43,16 +44,27 @@ async function api(path, options) {
 
 // Settings
 
+// Whole numbers only: "100.5" or "1e2" becomes NaN and is refused by settingsProblem.
+const parseWhole = (text) => (/^\d+$/.test(text.trim()) ? Number(text.trim()) : NaN);
+
+// The admin types a percentage ("11,1" or "11.1"); the setting is a fraction (0.111).
+// Rounding to tenths first keeps 11.1 from becoming 0.11099999.
+function parsePercent(text) {
+  const t = text.trim().replace(',', '.');
+  return /^\d+(\.\d+)?$/.test(t) ? Number(t) / 100 : NaN;
+}
+const formatPercent = (fraction) => String(Math.round(fraction * 1000) / 10).replace('.', ',');
+
 const settingFields = {
-  displayDurationMs: { el: () => $('set-duration'), parse: Number },
-  totalTrials: { el: () => $('set-trials'), parse: Number },
-  targetFrequency: { el: () => $('set-frequency'), parse: Number },
-  feedbackMode: { el: () => $('set-feedback'), parse: String },
+  displayDurationMs: { el: () => $('set-duration'), parse: Number, format: String },
+  totalTrials: { el: () => $('set-trials'), parse: parseWhole, format: String },
+  targetFrequency: { el: () => $('set-frequency'), parse: parsePercent, format: formatPercent },
+  feedbackMode: { el: () => $('set-feedback'), parse: String, format: String },
 };
 const settingChecks = { trialMode: 'set-trial-mode', randomFontSize: 'set-random-font' };
 
 function fillSettings(s) {
-  for (const [key, field] of Object.entries(settingFields)) field.el().value = String(s[key]);
+  for (const [key, field] of Object.entries(settingFields)) field.el().value = field.format(s[key]);
   for (const [key, id] of Object.entries(settingChecks)) $(id).checked = s[key];
 }
 
@@ -77,6 +89,18 @@ $('settings-form').addEventListener('submit', async (event) => {
   for (const [key, id] of Object.entries(settingChecks)) body[key] = $(id).checked;
   for (const [key, field] of Object.entries(settingFields)) body[key] = field.parse(field.el().value);
   const saved = $('settings-saved');
+  const problem = settingsProblem(body);
+  for (const id of ['set-trials', 'set-frequency']) $(id).removeAttribute('aria-invalid');
+  if (problem) {
+    const field = /Jumlah angka/.test(problem) ? 'set-trials' : /Proporsi|tidak ada angka 3/.test(problem) ? 'set-frequency' : null;
+    if (field) {
+      $(field).setAttribute('aria-invalid', 'true');
+      $(field).focus();
+    }
+    saved.className = 'status-error';
+    saved.textContent = `Belum disimpan. ${problem}`;
+    return;
+  }
   saved.className = 'status';
   saved.textContent = 'Menyimpan...';
   try {
@@ -287,7 +311,7 @@ async function openDetail(s) {
   $('detail-title').textContent = `Detail sesi ${s.participant_id_raw}, percobaan ke-${s.attempt_no}`;
   $('detail-summary').textContent = `${s.participant_name}. ${s.is_trial ? 'Latihan' : 'Utama'}, `
     + `${s.status === 'completed' ? 'selesai' : 'dihentikan'}. Pengaturan: ${s.display_duration_ms} ms, `
-    + `${s.total_trials} angka, ${Math.round(s.target_frequency * 100)}% angka 3, `
+    + `${s.total_trials} angka, ${formatPercent(s.target_frequency)}% angka 3, `
     + `ukuran angka ${s.random_font_size ? 'acak' : 'tetap'}.`;
   $('detail-status').className = 'status';
   $('detail-status').textContent = 'Memuat data per angka...';

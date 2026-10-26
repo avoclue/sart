@@ -12,11 +12,33 @@ export const FEEDBACK_MODES = ['off', 'errors', 'all'];
 // and the others are scaled by size / 120 (PLAN.md §9 D26).
 export const FONT_SIZES_PT = [48, 72, 94, 100, 120];
 
-export const SETTING_OPTIONS = {
-  displayDurationMs: [250, 500, 750],
-  totalTrials: [50, 100, 200],
-  targetFrequency: [0.1, 0.2, 0.3],
+export const DISPLAY_DURATIONS_MS = [250, 500, 750];
+// Free-text settings (PLAN.md §9 D27). 500 trials keeps a saved session well inside the
+// request size limit; the proportion of 3s is a percentage with at most one decimal.
+export const SETTING_LIMITS = {
+  totalTrials: { min: 10, max: 500 },
+  targetPercent: { min: 1, max: 50 },
 };
+
+// Why a combination of test settings is not allowed, in Indonesian for the admin page,
+// or null when it is fine. Used by the admin form and by the server.
+export function settingsProblem({ displayDurationMs, totalTrials, targetFrequency }) {
+  const { totalTrials: t, targetPercent: p } = SETTING_LIMITS;
+  if (!DISPLAY_DURATIONS_MS.includes(displayDurationMs)) return 'Durasi angka harus 250, 500 atau 750 ms.';
+  if (!Number.isInteger(totalTrials) || totalTrials < t.min || totalTrials > t.max) {
+    return `Jumlah angka harus bilangan bulat dari ${t.min} sampai ${t.max}.`;
+  }
+  const tenths = targetFrequency * 1000;
+  if (typeof targetFrequency !== 'number' || !Number.isFinite(targetFrequency)
+    || Math.abs(tenths - Math.round(tenths)) > 1e-6
+    || tenths < p.min * 10 - 1e-6 || tenths > p.max * 10 + 1e-6) {
+    return `Proporsi angka 3 harus dari ${p.min}% sampai ${p.max}%, dengan paling banyak satu angka desimal.`;
+  }
+  if (targetCount(totalTrials, targetFrequency) < 1) {
+    return 'Dengan jumlah angka dan proporsi ini tidak ada angka 3 yang muncul. Naikkan salah satunya.';
+  }
+  return null;
+}
 
 export const DEFAULT_SETTINGS = {
   displayDurationMs: 500,

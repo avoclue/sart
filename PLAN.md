@@ -67,7 +67,7 @@ once at the end of that window. Metric definitions stay the same.
 | 1 | Backend | **Cloudflare Workers with Static Assets + D1 (SQLite).** Everything is deployed on Cloudflare. A simple admin page with export is needed. (Changed from Pages + Pages Functions on 2026-10-25, see §4.) |
 | 2 | Identity form | **Name + participant ID**, both required. More fields are still being discussed. |
 | 3 | Purpose | **Research.** A consent checkbox is required before the test starts. The consent text will come from the research team; a placeholder is used until then. |
-| 4 | Settings | Same options and defaults as the reference (§2). |
+| 4 | Settings | Same defaults as the reference (§2). Display duration keeps the reference's three options; session length and the proportion of 3s became free entries on 2026-10-26 (§9 D27). |
 | 5 | Double-count bug | Fix it. |
 | 6 | Reaction time | Record it. |
 | 7 | Results visible to participant | Yes. |
@@ -169,7 +169,7 @@ Aborted sessions are saved with `status = aborted`.
 ## 8. Open items
 
 ### Content from the research team
-- Study title (replaces `[JUDUL STUDI]` in `public/index.html` and `public/admin/index.html`) and logo, if any.
+- Study title (replaces `[JUDUL STUDI]` in `public/index.html`). The logo is done.
 - Consent text (replaces `[TEKS PERSETUJUAN: ...]` in `public/index.html`).
 - Review of the drafted Indonesian participant text: form intro, instructions, feedback reasons, results labels.
 - Review of the admin glossary ("Penjelasan istilah"), especially the interpretive sentences.
@@ -219,3 +219,4 @@ Aborted sessions are saved with `status = aborted`.
 | D24 | Dashboard charts | Accuracy and RT variability (CV) are dot strips with one dot per participant, because with about 30 people a histogram hides individuals and has a noisy shape. Clicking "Lihat RT" on a session row shows its RT for each trial, with hits and presses on a 3 drawn in different shapes. Misses and correct withholds have no RT, so they are drawn in a band below 0 ms: × marks for misses, green rings for correct withholds. Every trial is then visible. The y-axis always spans the full response window (display + 200 ms), so sessions with the same settings share one scale. |
 | D25 | Admin page | Text in Bahasa Indonesia. Chart.js 4.4.1 comes from cdnjs, pinned with a Subresource Integrity hash. If it fails to load, the page says so and the tables still work. Settings save directly with no confirm step. Settings are not changed mid-study. Logging out means closing the browser (Basic Auth), and the page says so. The text filter matches name or participant ID. |
 | D26 | Random font size | An admin on/off setting (default off) for both practice and real sessions. When on, each trial shows its digit in one of the five Robertson et al. (1997) sizes, 48, 72, 94, 100 or 120 pt, drawn with equal chance. Screens have no fixed pt size, so 120 pt is the normal digit size and the rest are scaled by size / 120 (40%, 60%, 78%, 83% and 100%). The size is drawn before the test, so a replayed trial (D19) keeps it. It is saved per trial (`font_size_pt`, empty when off), and the setting is saved per session (`random_font_size`). This is the only part of R8 adopted so far. |
+| D27 | Free-text settings | Session length is a whole number from 10 to 500, and the proportion of 3s is a percentage from 1% to 50% with at most one decimal (for example 11.1%). Reason: to allow presets such as classic SART (225 trials) that the reference's three options cannot express. The number of 3s is still floor(trials × proportion), so 11.1% of 225 gives 24 and 11.2% gives 25. A combination with no 3s at all is refused. The admin form and the server use the same check (`settingsProblem` in `sart.js`). The 500 cap keeps a saved session well inside the request size limit. All trials of a session are now saved in one JSON statement, so long sessions stay within D1's per-request query limit. |

@@ -89,8 +89,11 @@ main {
   width: 100%;
   max-width: 38rem;
   margin: 0 auto;
-  padding: var(--space-4) var(--space-2);
+  padding: var(--space-3) var(--space-2) var(--space-4);
 }
+
+.site-logo { display: flex; justify-content: center; margin-bottom: var(--space-3); }
+.site-logo img { height: clamp(80px, 20vw, 112px); width: auto; }
 
 [hidden] { display: none !important; }
 

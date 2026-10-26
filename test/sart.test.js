@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   TARGET_DIGIT, targetCount, generateSequence, responseWindowMs,
   createTrial, registerPress, scoreTrial, summarize,
-  feedbackFor, estimateMinutes, combineInputTypes, FONT_SIZES_PT, generateFontSizes, fontScale,
+  feedbackFor, estimateMinutes, combineInputTypes, settingsProblem, FONT_SIZES_PT, generateFontSizes, fontScale,
 } from '../public/js/sart.js';
 
 function seededRandom(seed) {
@@ -154,4 +154,20 @@ test('generateFontSizes draws only Robertson sizes, and all of them over many tr
 test('fontScale is relative to the largest size', () => {
   assert.equal(fontScale(120), 1);
   assert.equal(fontScale(48), 0.4);
+});
+
+test('settingsProblem accepts free-text values inside the limits', () => {
+  const ok = { displayDurationMs: 250, totalTrials: 225, targetFrequency: 0.111 };
+  assert.equal(settingsProblem(ok), null);
+  assert.equal(settingsProblem({ ...ok, totalTrials: 10, targetFrequency: 0.1 }), null);
+  assert.equal(settingsProblem({ ...ok, totalTrials: 500, targetFrequency: 0.5 }), null);
+  assert.equal(settingsProblem({ ...ok, targetFrequency: 0.01 }), null);
+});
+
+test('settingsProblem rejects decimals in trials, extra decimals in percent and out-of-range values', () => {
+  const ok = { displayDurationMs: 500, totalTrials: 100, targetFrequency: 0.2 };
+  for (const totalTrials of [9, 501, 100.5, '100', NaN]) assert.match(settingsProblem({ ...ok, totalTrials }), /bilangan bulat/);
+  for (const targetFrequency of [0.009, 0.501, 0.1115, '0.2', NaN]) assert.match(settingsProblem({ ...ok, targetFrequency }), /Proporsi/);
+  assert.match(settingsProblem({ ...ok, displayDurationMs: 300 }), /Durasi/);
+  assert.match(settingsProblem({ ...ok, totalTrials: 10, targetFrequency: 0.05 }), /tidak ada angka 3/);
 });

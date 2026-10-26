@@ -6,7 +6,7 @@ owner's answers on 2026-10-25. Only the owner adds direction here.
 ## Identity
 
 - **Title / name shown to participants:** not decided. Use the placeholder `[JUDUL STUDI]`.
-- **Logo:** none yet. Do not create one.
+- **Logo:** Universitas Islam Indonesia, supplied by the owner (`public/img/logo-uii.png`, transparent PNG, cropped to the artwork). It is shown above every participant screen except the test itself. Not used on the admin page.
 
 ## Mood
 
@@ -34,4 +34,4 @@ Light only. No dark mode and no theme toggle.
 
 ## Open
 
-- Study title and logo.
+- Study title.

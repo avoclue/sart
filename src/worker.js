@@ -3,8 +3,6 @@ import { validateResult, validateAdminSettings, ValidationError } from './valida
 import { toCsv, SESSION_COLUMNS, TRIAL_COLUMNS } from './csv.js';
 
 const MAX_BODY_BYTES = 100_000;
-// D1 allows at most 100 bound parameters per query; a trial row has 9.
-const TRIALS_PER_INSERT = 11;
 
 function json(data, status = 200) {
   return Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -115,18 +113,17 @@ async function postResult(request, env) {
     r.settings.randomFontSize ? 1 : 0, r.participantId, isTrial,
   );
 
-  const statements = [insertSession];
-  for (let i = 0; i < r.trials.length; i += TRIALS_PER_INSERT) {
-    const chunk = r.trials.slice(i, i + TRIALS_PER_INSERT);
-    statements.push(env.DB.prepare(
-      `INSERT INTO trials (session_id, trial_no, digit, is_target, responded, rt_ms, outcome, extra_presses, font_size_pt)
-       VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')}`,
-    ).bind(...chunk.flatMap((t) => [
-      id, t.trialNo, t.digit, t.isTarget ? 1 : 0, t.responded ? 1 : 0, t.rtMs, t.outcome, t.extraPresses,
-      t.fontSizePt,
-    ])));
-  }
-  await env.DB.batch(statements);
+  // All trials go in one statement as a JSON array. One row of bound values per trial would
+  // need dozens of queries for a long session, and D1 caps the queries per request.
+  const trialRows = JSON.stringify(r.trials.map((t) => [
+    t.trialNo, t.digit, t.isTarget ? 1 : 0, t.responded ? 1 : 0, t.rtMs, t.outcome, t.extraPresses, t.fontSizePt,
+  ]));
+  const insertTrials = env.DB.prepare(
+    `INSERT INTO trials (session_id, trial_no, digit, is_target, responded, rt_ms, outcome, extra_presses, font_size_pt)
+     SELECT ?1, value ->> 0, value ->> 1, value ->> 2, value ->> 3, value ->> 4, value ->> 5, value ->> 6, value ->> 7
+     FROM json_each(?2)`,
+  ).bind(id, trialRows);
+  await env.DB.batch([insertSession, insertTrials]);
 
   const { attempt_no: attemptNo } = await env.DB.prepare('SELECT attempt_no FROM sessions WHERE id = ?').bind(id).first();
   return json({ sessionId: id, attemptNo }, 201);

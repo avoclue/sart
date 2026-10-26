@@ -1,7 +1,7 @@
 // Validation of request bodies. Pure functions, so they can be unit-tested with node --test.
 
 import {
-  SETTING_OPTIONS, FEEDBACK_MODES, FONT_SIZES_PT, BLANK_MS, targetCount, createTrial, registerPress, scoreTrial,
+  settingsProblem, FEEDBACK_MODES, FONT_SIZES_PT, BLANK_MS, targetCount, createTrial, registerPress, scoreTrial,
 } from '../public/js/sart.js';
 
 export const INPUT_TYPES = ['keyboard', 'touch', 'mixed', 'none'];
@@ -38,9 +38,8 @@ export function normaliseParticipantId(raw) {
 export function validateSettings(body) {
   if (!body || typeof body !== 'object') fail('settings must be an object');
   const { displayDurationMs, totalTrials, targetFrequency } = body;
-  if (!SETTING_OPTIONS.displayDurationMs.includes(displayDurationMs)) fail('invalid displayDurationMs');
-  if (!SETTING_OPTIONS.totalTrials.includes(totalTrials)) fail('invalid totalTrials');
-  if (!SETTING_OPTIONS.targetFrequency.includes(targetFrequency)) fail('invalid targetFrequency');
+  const problem = settingsProblem({ displayDurationMs, totalTrials, targetFrequency });
+  if (problem) fail(problem);
   if (typeof body.randomFontSize !== 'boolean') fail('randomFontSize must be a boolean');
   return { displayDurationMs, totalTrials, targetFrequency, randomFontSize: body.randomFontSize };
 }

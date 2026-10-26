@@ -172,3 +172,7 @@ code {
 #glossary-title { scroll-margin-top: var(--space-3); }
 /* A lone field in a row keeps the width of the fields above instead of stretching. */
 fieldset .settings-grid { grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
+
+#settings-form input[type="text"] { min-height: 44px; padding: 0.45rem 0.6rem; }
+.unit-input { display: flex; align-items: center; gap: 0.4rem; }
+.unit-input span { font-weight: 700; }
