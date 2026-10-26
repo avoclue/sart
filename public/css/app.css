@@ -229,6 +229,11 @@ kbd {
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
+.stimulus.color-red { color: #c4161c; }
+/* Pure yellow (#f6d106) is 1.4:1 on the page background, so the yellow digit is a mustard
+   that reaches 3:1, the WCAG minimum for large text. */
+.stimulus.color-yellow { color: #b58900; }
+.stimulus.color-blue { color: #1a56db; }
 .stimulus.feedback { font-size: clamp(2.5rem, 12vw, 4.5rem); }
 /* The mask is a fixed size, about a normal digit's height, whatever the digit size was. */
 .mask {
@@ -247,7 +252,21 @@ kbd {
 .stimulus.feedback-correct { color: var(--blue); }
 /* The digit, or the feedback title plus its reason, is centred as one block.
    The reason is removed while empty, so it never pushes a digit off centre. */
-.stimulus-box { text-align: center; }
+.stimulus-box { position: relative; text-align: center; }
+/* "Tes dimulai dalam..." sits above the countdown number without moving it, so the number
+   stays where the digits will appear. */
+.stimulus-lead {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  margin: 0 0 var(--space-1);
+  font-size: clamp(1.25rem, 5vw, 1.75rem);
+  font-weight: 700;
+  color: var(--blue);
+}
 .stimulus-reason {
   max-width: min(30rem, calc(100vw - 2rem));
   text-wrap: balance;
@@ -268,18 +287,6 @@ kbd {
   margin-bottom: var(--space-1);
 }
 .accuracy-label { color: var(--ink-soft); }
-
-.metrics { margin: 0 0 var(--space-4); border-top: 1px solid var(--edge); }
-.metrics > div {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  column-gap: var(--space-2);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--edge);
-}
-.metrics dt { font-weight: 700; }
-.metrics dd { margin: 0; font-weight: 700; font-size: 1.4rem; grid-row: span 2; align-self: center; font-variant-numeric: tabular-nums; }
-.metrics p { margin: 0; color: var(--ink-soft); font-size: 0.95rem; }
 
 /* Dialog: the only raised surface, so it is the only one with a shadow. */
 dialog {

@@ -50,8 +50,8 @@ test('rejects missing name or ID', () => {
   assert.throws(() => validateResult(body({ participantId: undefined })), ValidationError);
 });
 
-test('rejects settings outside the allowed options', () => {
-  const settings = { displayDurationMs: 300, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: false, maskMs: 0, responseMode: 'classic' };
+test('rejects settings outside the allowed ranges', () => {
+  const settings = { displayDurationMs: 50, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: false, maskMs: 0, responseMode: 'classic' };
   assert.throws(() => validateResult(body({ settings })), ValidationError);
 });
 
@@ -83,6 +83,23 @@ test('font sizes must match the randomFontSize setting', () => {
   assert.equal(validateResult(body()).trials[0].fontSizePt, null);
 });
 
+test('font colors must match the randomFontColor setting and be balanced', () => {
+  const on = { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, randomFontColor: true, balancedDigits: false, maskMs: 0, responseMode: 'classic' };
+  // 50 trials over 3 colors: 17, 17 and 16.
+  const cycle = ['red', 'yellow', 'blue'];
+  const colored = trialsFor(digits).map((t, i) => ({ ...t, fontColor: cycle[i % 3] }));
+  assert.equal(validateResult(body({ settings: on, trials: colored })).trials[1].fontColor, 'yellow');
+  assert.throws(() => validateResult(body({ settings: on })), ValidationError);
+  assert.throws(() => validateResult(body({ trials: colored })), ValidationError);
+  const green = colored.map((t) => ({ ...t, fontColor: 'green' }));
+  assert.throws(() => validateResult(body({ settings: on, trials: green })), /fontColor/);
+  const lopsided = colored.map((t, i) => ({ ...t, fontColor: i < 30 ? 'red' : 'blue' }));
+  assert.throws(() => validateResult(body({ settings: on, trials: lopsided })), /balanced/);
+  const partial = colored.slice(0, 20);
+  assert.equal(validateResult(body({ settings: on, status: 'aborted', trials: partial })).trials.length, 20);
+  assert.equal(validateResult(body()).trials[0].fontColor, null);
+});
+
 test('balanced sessions must have the non-3 digits equally often', () => {
   const on = { displayDurationMs: 500, totalTrials: 50, targetFrequency: 0.1, randomFontSize: false, balancedDigits: true, maskMs: 0, responseMode: 'classic' };
   // 45 non-3 digits over 8 digits: five appear 6 times and three appear 5 times.
@@ -100,7 +117,7 @@ test('rejects out-of-order trial numbers', () => {
 });
 
 test('admin settings need a boolean trialMode and a known feedbackMode', () => {
-  const s = { displayDurationMs: 250, totalTrials: 200, targetFrequency: 0.3, randomFontSize: true, balancedDigits: false, maskMs: 0, responseMode: 'classic' };
+  const s = { displayDurationMs: 250, totalTrials: 200, targetFrequency: 0.3, randomFontSize: true, randomFontColor: true, balancedDigits: false, maskMs: 0, responseMode: 'classic' };
   const full = { ...s, trialMode: true, feedbackMode: 'errors', practiceSessions: 2, practiceTrials: 18 };
   assert.deepEqual(validateAdminSettings(full), full);
   assert.throws(() => validateAdminSettings({ ...full, trialMode: 1 }), ValidationError);
@@ -148,4 +165,18 @@ test('mask widens the RT window; wait_mask allows negative RTs and scores them e
   assert.equal(validateResult(body({ settings: wait, trials: trialsFor(digits, 1000) })).trials[5].outcome, 'hit');
   assert.throws(() => validateResult(body({ settings: wait, trials: trialsFor(digits, 1100) })), /rtMs/);
   assert.throws(() => validateResult(body({ settings: { ...wait, maskMs: 0 } })), /butuh mask/);
+});
+
+test('session start and duration are optional but checked when sent', () => {
+  const none = validateResult(body());
+  assert.equal(none.startedAt, null);
+  assert.equal(none.durationMs, null);
+  const r = validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z', durationMs: 305_420 }));
+  assert.equal(r.startedAt, '2026-10-26T03:00:00.000Z');
+  assert.equal(r.durationMs, 305_420);
+  assert.throws(() => validateResult(body({ startedAt: 'yesterday', durationMs: 1000 })), ValidationError);
+  assert.throws(() => validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z' })), ValidationError);
+  assert.throws(() => validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z', durationMs: -1 })), ValidationError);
+  assert.throws(() => validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z', durationMs: 1.5 })), ValidationError);
+  assert.throws(() => validateResult(body({ startedAt: '2026-10-26T03:00:00.000Z', durationMs: 90_000_000 })), ValidationError);
 });

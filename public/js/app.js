@@ -1,7 +1,7 @@
 // Participant app: screens, input and timing. All scoring lives in sart.js.
 
 import {
-  COUNTDOWN_FROM, COUNTDOWN_STEP_MS, FEEDBACK_PAUSE_MS, generateSequence, generateFontSizes, fontScale,
+  COUNTDOWN_FROM, COUNTDOWN_STEP_MS, COUNTDOWN_LABEL, FEEDBACK_PAUSE_MS, generateSequence, generateFontSizes, generateFontColors, fontScale,
   responseWindowMs, cueOffsetMs, createTrial, registerPress, outcomeOf, scoreTrial, summarize, feedbackFor,
   estimateMinutes, combineInputTypes, practiceChoices,
 } from './sart.js';
@@ -111,11 +111,12 @@ $('start-test').addEventListener('click', () => startSession(settings.practiceSe
 
 // Test runner
 
-function setStimulus(text, scale = 1) {
+function setStimulus(text, scale = 1, color = null) {
   $('stimulus').textContent = text;
-  $('stimulus').className = 'stimulus';
+  $('stimulus').className = color ? `stimulus color-${color}` : 'stimulus';
   $('stimulus').style.setProperty('--digit-scale', scale);
   $('stimulus-reason').textContent = '';
+  $('stimulus-lead').hidden = true;
   $('mask').hidden = true;
 }
 
@@ -135,10 +136,15 @@ function showFeedback(key) {
   $('stimulus-reason').textContent = reason;
 }
 
-// 3, 2, 1 before the first digit, and again when the test resumes (PLAN.md §9 D32).
+// 3, 2, 1 before the first digit, and again when the test resumes (PLAN.md §9 D32),
+// with a line above the number (PLAN.md §9 D35).
 function countdown(then) {
   for (let i = 0; i < COUNTDOWN_FROM; i++) {
-    later(i * COUNTDOWN_STEP_MS, () => setStimulus(String(COUNTDOWN_FROM - i)));
+    later(i * COUNTDOWN_STEP_MS, () => {
+      setStimulus(String(COUNTDOWN_FROM - i));
+      $('stimulus-lead').textContent = COUNTDOWN_LABEL;
+      $('stimulus-lead').hidden = false;
+    });
   }
   later(COUNTDOWN_FROM * COUNTDOWN_STEP_MS, () => {
     setStimulus('');
@@ -166,8 +172,9 @@ function startSession(kind) {
     settings: { ...settings, totalTrials },
     feedbackMode: practice ? settings.feedbackMode : 'off',
     sequence: generateSequence(totalTrials, settings.targetFrequency, { balanced: settings.balancedDigits }),
-    // Drawn up front so a replayed trial (PLAN.md §9 D19) keeps its size.
+    // Sizes and colors are drawn up front so a replayed trial (PLAN.md §9 D19) keeps them.
     fontSizes: settings.randomFontSize ? generateFontSizes(totalTrials) : null,
+    fontColors: settings.randomFontColor ? generateFontColors(totalTrials) : null,
     trials: [],
     index: 0,
     current: null,
@@ -177,6 +184,10 @@ function startSession(kind) {
     tabHiddenCount: 0,
     timers: [],
     paused: false,
+    // Session length: from the start of the countdown to the end (PLAN.md §9 D35).
+    startedAt: new Date().toISOString(),
+    startedPerf: performance.now(),
+    stoppedPerf: null,
   };
   $('test-practice-tag').hidden = !practice;
   $('test-practice-tag').textContent = `Sesi Latihan ${run.practiceNo} dari ${settings.practiceSessions}`;
@@ -194,7 +205,9 @@ function beginTrial() {
   run.current = createTrial(run.index + 1, run.sequence[run.index]);
   const fontSizePt = run.fontSizes ? run.fontSizes[run.index] : null;
   run.current.fontSizePt = fontSizePt;
-  setStimulus(String(run.current.digit), fontSizePt ? fontScale(fontSizePt) : 1);
+  const fontColor = run.fontColors ? run.fontColors[run.index] : null;
+  run.current.fontColor = fontColor;
+  setStimulus(String(run.current.digit), fontSizePt ? fontScale(fontSizePt) : 1, fontColor);
   run.onset = performance.now();
   run.accepting = true;
   const { displayDurationMs, maskMs } = run.settings;
@@ -269,6 +282,7 @@ document.addEventListener('visibilitychange', () => {
 $('end-test').addEventListener('click', () => {
   run.paused = true;
   run.accepting = false;
+  run.stoppedPerf = performance.now();
   clearTimers();
   run.current = null;
   setStimulus('');
@@ -278,6 +292,7 @@ $('end-test').addEventListener('click', () => {
 function resumeTest() {
   $('end-dialog').close();
   run.paused = false;
+  run.stoppedPerf = null;
   $('test-area').focus();
   countdown(beginTrial);
 }
@@ -308,11 +323,15 @@ function finishTest(status) {
       practiceNo: run.practiceNo,
       visitId: participant.visitId,
       consentAt: participant.consentAt,
+      startedAt: run.startedAt,
+      // An early end stops the clock when "Akhiri tes" was pressed, not when the dialog closes.
+      durationMs: Math.round((run.stoppedPerf ?? performance.now()) - run.startedPerf),
       settings: {
         displayDurationMs: run.settings.displayDurationMs,
         totalTrials: run.settings.totalTrials,
         targetFrequency: run.settings.targetFrequency,
         randomFontSize: run.settings.randomFontSize,
+        randomFontColor: run.settings.randomFontColor,
         balancedDigits: run.settings.balancedDigits,
         maskMs: run.settings.maskMs,
         responseMode: run.settings.responseMode,
@@ -323,8 +342,8 @@ function finishTest(status) {
         inputType: combineInputTypes(run.inputTypes),
       },
       tabHiddenCount: run.tabHiddenCount,
-      trials: run.trials.map(({ trialNo, digit, responded, rtMs, extraPresses, fontSizePt }) => ({
-        trialNo, digit, responded, rtMs, extraPresses, fontSizePt,
+      trials: run.trials.map(({ trialNo, digit, responded, rtMs, extraPresses, fontSizePt, fontColor }) => ({
+        trialNo, digit, responded, rtMs, extraPresses, fontSizePt, fontColor,
       })),
     },
     summary: summarize(run.trials),
@@ -374,9 +393,6 @@ function showResults({ kind, practiceNo, status, summary }) {
   $('result-summary').hidden = !completed;
   if (completed) {
     $('result-accuracy').textContent = `${summary.accuracy}%`;
-    $('result-hits').textContent = summary.correctHits;
-    $('result-commissions').textContent = summary.commissionErrors;
-    $('result-omissions').textContent = summary.omissionErrors;
   }
 
   const choices = practice

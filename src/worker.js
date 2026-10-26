@@ -66,6 +66,7 @@ async function getSettings(env) {
     trialMode: row.trial_mode === 1,
     feedbackMode: row.feedback_mode,
     randomFontSize: row.random_font_size === 1,
+    randomFontColor: row.random_font_color === 1,
     balancedDigits: row.balanced_digits === 1,
     maskMs: row.mask_ms,
     responseMode: row.response_mode,
@@ -78,11 +79,11 @@ async function putSettings(request, env) {
   const s = validateAdminSettings(await readJson(request));
   await env.DB.prepare(
     `UPDATE settings SET display_duration_ms = ?, total_trials = ?, target_frequency = ?,
-       trial_mode = ?, feedback_mode = ?, random_font_size = ?, balanced_digits = ?, mask_ms = ?,
+       trial_mode = ?, feedback_mode = ?, random_font_size = ?, random_font_color = ?, balanced_digits = ?, mask_ms = ?,
        response_mode = ?, practice_sessions = ?, practice_trials = ?, updated_at = ? WHERE id = 1`,
   ).bind(
     s.displayDurationMs, s.totalTrials, s.targetFrequency, s.trialMode ? 1 : 0, s.feedbackMode,
-    s.randomFontSize ? 1 : 0, s.balancedDigits ? 1 : 0, s.maskMs, s.responseMode,
+    s.randomFontSize ? 1 : 0, s.randomFontColor ? 1 : 0, s.balancedDigits ? 1 : 0, s.maskMs, s.responseMode,
     s.practiceSessions, s.practiceTrials, new Date().toISOString(),
   ).run();
   return json(await getSettings(env));
@@ -108,9 +109,9 @@ async function postResult(request, env) {
        correct_hits, commission_errors, omission_errors, correct_withholds, accuracy, mean_rt_ms,
        sd_rt_ms, rt_cv, commission_rate, omission_rate, anticipation_count, user_agent,
        screen_width, screen_height, input_type, tab_hidden_count, feedback_mode, random_font_size,
-       balanced_digits, mask_ms, response_mode, early_count, practice_no, visit_id)
+       balanced_digits, mask_ms, response_mode, early_count, practice_no, visit_id, started_at, duration_ms, random_font_color)
      SELECT ?, ?, ?, ?, ?, COUNT(*) + 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-       ?, ?, ?, ?, ?
+       ?, ?, ?, ?, ?, ?, ?, ?
      FROM sessions WHERE participant_id = ? AND is_trial = ?`,
   ).bind(
     id, new Date().toISOString(), r.participantId, r.participantIdRaw, r.participantName, isTrial,
@@ -121,17 +122,17 @@ async function postResult(request, env) {
     summary.anticipationCount, request.headers.get('User-Agent')?.slice(0, 500) ?? null,
     r.screenWidth, r.screenHeight, r.inputType, r.tabHiddenCount, feedbackMode,
     r.settings.randomFontSize ? 1 : 0, r.settings.balancedDigits ? 1 : 0, r.settings.maskMs,
-    r.settings.responseMode, summary.earlyCount, r.practiceNo, r.visitId, r.participantId, isTrial,
+    r.settings.responseMode, summary.earlyCount, r.practiceNo, r.visitId, r.startedAt, r.durationMs, r.settings.randomFontColor ? 1 : 0, r.participantId, isTrial,
   );
 
   // All trials go in one statement as a JSON array. One row of bound values per trial would
   // need dozens of queries for a long session, and D1 caps the queries per request.
   const trialRows = JSON.stringify(r.trials.map((t) => [
-    t.trialNo, t.digit, t.isTarget ? 1 : 0, t.responded ? 1 : 0, t.rtMs, t.outcome, t.extraPresses, t.fontSizePt,
+    t.trialNo, t.digit, t.isTarget ? 1 : 0, t.responded ? 1 : 0, t.rtMs, t.outcome, t.extraPresses, t.fontSizePt, t.fontColor,
   ]));
   const insertTrials = env.DB.prepare(
-    `INSERT INTO trials (session_id, trial_no, digit, is_target, responded, rt_ms, outcome, extra_presses, font_size_pt)
-     SELECT ?1, value ->> 0, value ->> 1, value ->> 2, value ->> 3, value ->> 4, value ->> 5, value ->> 6, value ->> 7
+    `INSERT INTO trials (session_id, trial_no, digit, is_target, responded, rt_ms, outcome, extra_presses, font_size_pt, font_color)
+     SELECT ?1, value ->> 0, value ->> 1, value ->> 2, value ->> 3, value ->> 4, value ->> 5, value ->> 6, value ->> 7, value ->> 8
      FROM json_each(?2)`,
   ).bind(id, trialRows);
   await env.DB.batch([insertSession, insertTrials]);
@@ -153,7 +154,7 @@ async function listSessions(url, env) {
 
 async function listTrials(url, env) {
   const { results } = await env.DB.prepare(
-    `SELECT t.*, s.participant_id, s.attempt_no, s.is_trial, s.status, s.feedback_mode, s.random_font_size, s.balanced_digits,
+    `SELECT t.*, s.participant_id, s.attempt_no, s.is_trial, s.status, s.feedback_mode, s.random_font_size, s.random_font_color, s.balanced_digits,
        s.mask_ms, s.response_mode, s.practice_no, s.visit_id
      FROM trials t JOIN sessions s ON s.id = t.session_id ${trialFilter(url, 's.')}
      ORDER BY s.created_at, t.trial_no`,

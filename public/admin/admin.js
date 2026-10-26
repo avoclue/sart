@@ -57,11 +57,11 @@ function parsePercent(text) {
 const formatPercent = (fraction) => String(Math.round(fraction * 1000) / 10).replace('.', ',');
 
 const settingFields = {
-  displayDurationMs: { el: () => $('set-duration'), parse: Number, format: String },
+  displayDurationMs: { el: () => $('set-duration'), parse: parseWhole, format: String },
   totalTrials: { el: () => $('set-trials'), parse: parseWhole, format: String },
   targetFrequency: { el: () => $('set-frequency'), parse: parsePercent, format: formatPercent },
   feedbackMode: { el: () => $('set-feedback'), parse: String, format: String },
-  maskMs: { el: () => $('set-mask'), parse: Number, format: String },
+  maskMs: { el: () => $('set-mask'), parse: parseWhole, format: String },
   responseMode: { el: () => $('set-response-mode'), parse: String, format: String },
   practiceSessions: { el: () => $('set-practice-sessions'), parse: parseWhole, format: String },
   practiceTrials: { el: () => $('set-practice-trials'), parse: parseWhole, format: String },
@@ -69,13 +69,15 @@ const settingFields = {
 // Which field a settings problem is about, so the cursor can go there.
 // The first match wins, so the more specific practice-length pattern comes first.
 const PROBLEM_FIELDS = [
+  [/Durasi angka/, 'set-duration'],
+  [/Mask harus/, 'set-mask'],
   [/angka per sesi latihan|jumlah angka latihan/, 'set-practice-trials'],
   [/Jumlah sesi latihan|minimal 1 sesi latihan/, 'set-practice-sessions'],
   [/Jumlah angka/, 'set-trials'],
   [/Proporsi|tidak ada angka 3/, 'set-frequency'],
   [/Tunggu mask/, 'set-response-mode'],
 ];
-const settingChecks = { trialMode: 'set-trial-mode', randomFontSize: 'set-random-font', balancedDigits: 'set-balanced' };
+const settingChecks = { trialMode: 'set-trial-mode', randomFontSize: 'set-random-font', randomFontColor: 'set-random-color', balancedDigits: 'set-balanced' };
 
 function fillSettings(s) {
   for (const [key, field] of Object.entries(settingFields)) field.el().value = field.format(s[key]);
@@ -92,6 +94,7 @@ function readSettings() {
 
 // "4 menit 22 detik", rounded up to whole seconds.
 function formatDuration(ms) {
+  if (ms === null || ms === undefined) return '';
   const total = Math.ceil(ms / 1000);
   const minutes = Math.floor(total / 60);
   const seconds = total % 60;
@@ -100,31 +103,40 @@ function formatDuration(ms) {
 }
 
 // Live estimate of the time spent in the test itself, from the values in the form now.
-// Reading instructions and choosing between sessions is not included.
+// Reading instructions and choosing between sessions is not included. One line per item.
 function updateEstimate() {
   const s = readSettings();
+  const list = $('estimate-list');
+  const note = $('estimate-note');
+  list.replaceChildren();
   if (adminSettingsProblem(s)) {
-    $('estimate-text').textContent = 'Lengkapi pengaturan dengan nilai yang valid untuk melihat perkiraan.';
+    note.textContent = 'Lengkapi pengaturan dengan nilai yang valid untuk melihat perkiraan.';
+    note.hidden = false;
     return;
   }
+  note.hidden = true;
+  const add = (label, ms) => {
+    const li = document.createElement('li');
+    const value = document.createElement('strong');
+    value.textContent = formatDuration(ms);
+    li.append(`${label}: `, value);
+    list.append(li);
+  };
   const practice = { ...s, totalTrials: s.practiceTrials };
   const pauses = s.feedbackMode === 'all' ? s.practiceTrials : 0;
   const onePractice = sessionDurationMs(practice, pauses);
-  const parts = [];
   if (s.practiceSessions > 0) {
-    parts.push(`Satu sesi latihan: ${formatDuration(onePractice)}.`);
-    if (s.practiceSessions > 1) {
-      parts.push(`Semua ${s.practiceSessions} sesi latihan: ${formatDuration(onePractice * s.practiceSessions)}.`);
-    }
+    add('Satu sesi latihan', onePractice);
+    if (s.practiceSessions > 1) add(`Semua ${s.practiceSessions} sesi latihan`, onePractice * s.practiceSessions);
   }
-  if (!s.trialMode) parts.push(`Sesi utama: ${formatDuration(sessionDurationMs(s))}.`);
+  if (!s.trialMode) add('Sesi utama', sessionDurationMs(s));
   if (!s.trialMode && s.practiceSessions > 0) {
-    parts.push(`Total dengan semua latihan: ${formatDuration(onePractice * s.practiceSessions + sessionDurationMs(s))}.`);
+    add('Total dengan semua latihan', onePractice * s.practiceSessions + sessionDurationMs(s));
   }
   if (s.practiceSessions > 0 && s.feedbackMode === 'errors') {
-    parts.push('Di sesi latihan, setiap jawaban salah menambah 1 detik.');
+    note.textContent = 'Di sesi latihan, setiap jawaban salah menambah 1 detik.';
+    note.hidden = false;
   }
-  $('estimate-text').textContent = parts.join(' ');
 }
 
 $('settings-form').addEventListener('input', updateEstimate);
@@ -295,6 +307,7 @@ const COLUMNS = [
   ['is_trial', 'Jenis', (s) => sessionKindLabel(s)],
   ['status', 'Status', (s) => (s.status === 'completed' ? 'Selesai' : 'Dihentikan')],
   ['trials_completed', 'Angka', (s) => `${s.trials_completed} / ${s.total_trials}`, true],
+  ['duration_ms', 'Durasi', (s) => formatDuration(s.duration_ms), true],
   ['accuracy', 'Akurasi', (s) => (s.accuracy === null ? '' : `${s.accuracy}%`), true],
   ['correct_hits', 'Hit', (s) => s.correct_hits, true],
   ['commission_errors', 'Komisi', (s) => s.commission_errors, true],
@@ -400,7 +413,7 @@ async function openDetail(s) {
   $('detail-summary').textContent = `${s.participant_name}. ${sessionKindLabel(s)}, `
     + `${s.status === 'completed' ? 'selesai' : 'dihentikan'}. Pengaturan: ${s.display_duration_ms} ms, `
     + `${s.total_trials} angka, ${formatPercent(s.target_frequency)}% angka 3, `
-    + `ukuran angka ${s.random_font_size ? 'acak' : 'tetap'}, angka ${s.balanced_digits ? 'seimbang' : 'tidak seimbang'}, `
+    + `ukuran angka ${s.random_font_size ? 'acak' : 'tetap'}, warna angka ${s.random_font_color ? 'acak' : 'tetap'}, angka ${s.balanced_digits ? 'seimbang' : 'tidak seimbang'}, `
     + `${s.mask_ms ? `mask ${s.mask_ms} ms` : 'tanpa mask'}, mode respons ${s.response_mode === 'wait_mask' ? 'Tunggu mask' : 'Klasik'}.`;
   $('detail-status').className = 'status';
   $('detail-status').textContent = 'Memuat data per angka...';

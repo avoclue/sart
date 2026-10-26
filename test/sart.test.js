@@ -5,7 +5,7 @@ import {
   createTrial, registerPress, scoreTrial, summarize,
   feedbackFor, estimateMinutes, combineInputTypes, settingsProblem, balancedCounts, NON_TARGET_DIGITS,
   adminSettingsProblem, practiceChoices, afterDigitMs, cueOffsetMs, outcomeOf, isAnticipation,
-  sessionDurationMs, FONT_SIZES_PT, generateFontSizes, fontScale,
+  sessionDurationMs, FONT_SIZES_PT, FONT_COLORS, generateFontSizes, generateFontColors, fontScale,
 } from '../public/js/sart.js';
 
 function seededRandom(seed) {
@@ -183,7 +183,7 @@ test('settingsProblem rejects decimals in trials, extra decimals in percent and 
   const ok = { displayDurationMs: 500, totalTrials: 100, targetFrequency: 0.2 };
   for (const totalTrials of [9, 501, 100.5, '100', NaN]) assert.match(settingsProblem({ ...ok, totalTrials }), /bilangan bulat/);
   for (const targetFrequency of [0.009, 0.501, 0.1115, '0.2', NaN]) assert.match(settingsProblem({ ...ok, targetFrequency }), /Proporsi/);
-  assert.match(settingsProblem({ ...ok, displayDurationMs: 300 }), /Durasi/);
+  assert.match(settingsProblem({ ...ok, displayDurationMs: 50 }), /Durasi/);
   assert.match(settingsProblem({ ...ok, totalTrials: 10, targetFrequency: 0.04 }), /tidak ada angka 3/);
   assert.equal(settingsProblem({ ...ok, totalTrials: 10, targetFrequency: 0.05 }), null);
 });
@@ -275,7 +275,14 @@ test('settingsProblem checks the mask and response mode', () => {
   assert.equal(settingsProblem({ ...ok, maskMs: 900, responseMode: 'classic' }), null);
   assert.equal(settingsProblem({ ...ok, maskMs: 900, responseMode: 'wait_mask' }), null);
   assert.match(settingsProblem({ ...ok, maskMs: 0, responseMode: 'wait_mask' }), /butuh mask/);
-  assert.match(settingsProblem({ ...ok, maskMs: 800 }), /Mask harus/);
+  assert.equal(settingsProblem({ ...ok, maskMs: 800 }), null);
+  assert.match(settingsProblem({ ...ok, maskMs: 50 }), /Mask harus/);
+  assert.match(settingsProblem({ ...ok, maskMs: 2500 }), /Mask harus/);
+  assert.match(settingsProblem({ ...ok, maskMs: 900.5 }), /Mask harus/);
+  assert.equal(settingsProblem({ ...ok, displayDurationMs: 333 }), null);
+  assert.match(settingsProblem({ ...ok, displayDurationMs: 99 }), /Durasi angka/);
+  assert.match(settingsProblem({ ...ok, displayDurationMs: 2001 }), /Durasi angka/);
+  assert.match(settingsProblem({ ...ok, displayDurationMs: NaN }), /Durasi angka/);
   assert.match(settingsProblem({ ...ok, responseMode: 'fast' }), /Mode respons/);
 });
 
@@ -301,4 +308,16 @@ test('sessionDurationMs adds the countdown, every window and any feedback pauses
   assert.equal(sessionDurationMs({ displayDurationMs: 250, totalTrials: 225, maskMs: 900 }), 3000 + 225 * 1150);
   assert.equal(sessionDurationMs({ displayDurationMs: 500, totalTrials: 100 }), 3000 + 100 * 700);
   assert.equal(sessionDurationMs({ displayDurationMs: 250, totalTrials: 18, maskMs: 900 }, 18), 3000 + 18 * 1150 + 18 * 1000);
+});
+
+test('generateFontColors balances the three colors', () => {
+  for (const n of [10, 18, 100, 225, 226]) {
+    const colors = generateFontColors(n, seededRandom(n));
+    assert.equal(colors.length, n);
+    const counts = FONT_COLORS.map((c) => colors.filter((x) => x === c).length);
+    assert.ok(Math.max(...counts) - Math.min(...counts) <= 1, `n=${n} counts=${counts}`);
+  }
+  assert.deepEqual(FONT_COLORS, ['red', 'yellow', 'blue']);
+  assert.equal(generateFontColors(225, seededRandom(1)).filter((c) => c === 'blue').length, 75);
+  assert.notDeepEqual(generateFontColors(30, seededRandom(1)), generateFontColors(30, seededRandom(2)));
 });

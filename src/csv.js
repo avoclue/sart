@@ -33,13 +33,13 @@ export const SESSION_COLUMNS = [
   col('omission_rate'), col('anticipation_count'), col('user_agent'), col('screen_width'),
   col('screen_height'), col('input_type'), col('tab_hidden_count'), col('feedback_mode'),
   col('random_font_size'), col('balanced_digits'), col('mask_ms'), col('response_mode'),
-  col('early_count'), col('practice_no'), col('visit_id'),
+  col('early_count'), col('practice_no'), col('visit_id'), wibCol('started_at'), col('duration_ms'), col('random_font_color'),
 ];
 
 export const TRIAL_COLUMNS = [
   col('session_id'), col('participant_id'), col('attempt_no'), col('is_trial'), col('status'),
-  col('feedback_mode'), col('random_font_size'), col('balanced_digits'), col('mask_ms'),
+  col('feedback_mode'), col('random_font_size'), col('random_font_color'), col('balanced_digits'), col('mask_ms'),
   col('response_mode'), col('practice_no'), col('visit_id'),
   col('trial_no'), col('digit'), col('is_target'), col('responded'), col('rt_ms'), col('outcome'),
-  col('extra_presses'), col('font_size_pt'),
+  col('extra_presses'), col('font_size_pt'), col('font_color'),
 ];
