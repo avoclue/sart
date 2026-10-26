@@ -1,7 +1,7 @@
 // Admin page: settings form, overview, session table, session detail and CSV links.
 
 import { API_BASE } from '../js/config.js';
-import { adminSettingsProblem } from '../js/sart.js';
+import { adminSettingsProblem, sessionDurationMs } from '../js/sart.js';
 import {
   participantCount, realSessionCount, latestCompletedPerParticipant, metricMeans,
   filterSessions, sortSessions,
@@ -80,7 +80,55 @@ const settingChecks = { trialMode: 'set-trial-mode', randomFontSize: 'set-random
 function fillSettings(s) {
   for (const [key, field] of Object.entries(settingFields)) field.el().value = field.format(s[key]);
   for (const [key, id] of Object.entries(settingChecks)) $(id).checked = s[key];
+  updateEstimate();
 }
+
+function readSettings() {
+  const body = {};
+  for (const [key, id] of Object.entries(settingChecks)) body[key] = $(id).checked;
+  for (const [key, field] of Object.entries(settingFields)) body[key] = field.parse(field.el().value);
+  return body;
+}
+
+// "4 menit 22 detik", rounded up to whole seconds.
+function formatDuration(ms) {
+  const total = Math.ceil(ms / 1000);
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  if (minutes === 0) return `${seconds} detik`;
+  return seconds === 0 ? `${minutes} menit` : `${minutes} menit ${seconds} detik`;
+}
+
+// Live estimate of the time spent in the test itself, from the values in the form now.
+// Reading instructions and choosing between sessions is not included.
+function updateEstimate() {
+  const s = readSettings();
+  if (adminSettingsProblem(s)) {
+    $('estimate-text').textContent = 'Lengkapi pengaturan dengan nilai yang valid untuk melihat perkiraan.';
+    return;
+  }
+  const practice = { ...s, totalTrials: s.practiceTrials };
+  const pauses = s.feedbackMode === 'all' ? s.practiceTrials : 0;
+  const onePractice = sessionDurationMs(practice, pauses);
+  const parts = [];
+  if (s.practiceSessions > 0) {
+    parts.push(`Satu sesi latihan: ${formatDuration(onePractice)}.`);
+    if (s.practiceSessions > 1) {
+      parts.push(`Semua ${s.practiceSessions} sesi latihan: ${formatDuration(onePractice * s.practiceSessions)}.`);
+    }
+  }
+  if (!s.trialMode) parts.push(`Sesi utama: ${formatDuration(sessionDurationMs(s))}.`);
+  if (!s.trialMode && s.practiceSessions > 0) {
+    parts.push(`Total dengan semua latihan: ${formatDuration(onePractice * s.practiceSessions + sessionDurationMs(s))}.`);
+  }
+  if (s.practiceSessions > 0 && s.feedbackMode === 'errors') {
+    parts.push('Di sesi latihan, setiap jawaban salah menambah 1 detik.');
+  }
+  $('estimate-text').textContent = parts.join(' ');
+}
+
+$('settings-form').addEventListener('input', updateEstimate);
+$('settings-form').addEventListener('change', updateEstimate);
 
 async function loadSettings() {
   $('settings-status').hidden = false;
@@ -99,9 +147,7 @@ async function loadSettings() {
 
 $('settings-form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const body = {};
-  for (const [key, id] of Object.entries(settingChecks)) body[key] = $(id).checked;
-  for (const [key, field] of Object.entries(settingFields)) body[key] = field.parse(field.el().value);
+  const body = readSettings();
   const saved = $('settings-saved');
   const problem = adminSettingsProblem(body);
   for (const [, id] of PROBLEM_FIELDS) $(id).removeAttribute('aria-invalid');

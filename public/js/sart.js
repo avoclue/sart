@@ -206,10 +206,17 @@ export function feedbackFor(outcome, mode) {
   return mode === 'all' || mode === 'errors' ? outcome : null;
 }
 
+// Length of one session in ms: the countdown plus every trial's response window.
+// feedbackPauses adds the 1 s pause after that many trials (practice feedback, PLAN.md §9 D18).
+export function sessionDurationMs({ displayDurationMs, totalTrials, maskMs = 0 }, feedbackPauses = 0) {
+  return COUNTDOWN_FROM * COUNTDOWN_STEP_MS
+    + totalTrials * responseWindowMs(displayDurationMs, maskMs)
+    + feedbackPauses * FEEDBACK_PAUSE_MS;
+}
+
 // Rounded up to whole minutes, countdown included. Feedback pauses are not included.
-export function estimateMinutes({ displayDurationMs, totalTrials, maskMs = 0 }) {
-  const ms = COUNTDOWN_FROM * COUNTDOWN_STEP_MS + totalTrials * responseWindowMs(displayDurationMs, maskMs);
-  return Math.ceil(ms / 60000);
+export function estimateMinutes(settings) {
+  return Math.ceil(sessionDurationMs(settings) / 60000);
 }
 
 // Combines the input types of all presses in a session into one value.

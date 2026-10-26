@@ -4,7 +4,8 @@ import {
   TARGET_DIGIT, targetCount, generateSequence, responseWindowMs,
   createTrial, registerPress, scoreTrial, summarize,
   feedbackFor, estimateMinutes, combineInputTypes, settingsProblem, balancedCounts, NON_TARGET_DIGITS,
-  adminSettingsProblem, practiceChoices, afterDigitMs, cueOffsetMs, outcomeOf, isAnticipation, FONT_SIZES_PT, generateFontSizes, fontScale,
+  adminSettingsProblem, practiceChoices, afterDigitMs, cueOffsetMs, outcomeOf, isAnticipation,
+  sessionDurationMs, FONT_SIZES_PT, generateFontSizes, fontScale,
 } from '../public/js/sart.js';
 
 function seededRandom(seed) {
@@ -294,4 +295,10 @@ test('practiceChoices offers another practice until N, and the main session unle
   assert.deepEqual(practiceChoices({ practiceDone: 3, practiceSessions: 3, trialMode: false }), { practiceAgain: false, startMain: true });
   assert.deepEqual(practiceChoices({ practiceDone: 2, practiceSessions: 3, trialMode: true }), { practiceAgain: true, startMain: false });
   assert.deepEqual(practiceChoices({ practiceDone: 3, practiceSessions: 3, trialMode: true }), { practiceAgain: false, startMain: false });
+});
+
+test('sessionDurationMs adds the countdown, every window and any feedback pauses', () => {
+  assert.equal(sessionDurationMs({ displayDurationMs: 250, totalTrials: 225, maskMs: 900 }), 3000 + 225 * 1150);
+  assert.equal(sessionDurationMs({ displayDurationMs: 500, totalTrials: 100 }), 3000 + 100 * 700);
+  assert.equal(sessionDurationMs({ displayDurationMs: 250, totalTrials: 18, maskMs: 900 }, 18), 3000 + 18 * 1150 + 18 * 1000);
 });

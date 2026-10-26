@@ -222,3 +222,14 @@ fieldset .settings-grid { grid-template-columns: repeat(auto-fill, minmax(13rem,
 .label-row { display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.35rem; }
 .label-row label { margin-bottom: 0; }
 .label-row .help { margin: -11px 0; }
+
+/* Live duration estimate, just above the save button. */
+.estimate {
+  background: var(--paper);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-control);
+  padding: var(--space-1) var(--space-2);
+  margin-bottom: var(--space-1);
+}
+.estimate h3 { font-size: 1rem; margin: 0 0 0.25rem; }
+.estimate p { margin: 0; }
