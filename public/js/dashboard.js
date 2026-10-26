@@ -16,15 +16,33 @@ export function realSessionCount(sessions) {
   return sessions.filter(isReal).length;
 }
 
-// Each participant is represented by their latest completed real session (PLAN.md §9 D23).
+// Each participant is represented by their latest completed real session in each test set
+// (PLAN.md §9 D23, D38), so a session in set B does not replace one in set A.
 export function latestCompletedPerParticipant(sessions) {
   const latest = new Map();
   for (const s of sessions) {
     if (!isReal(s) || s.status !== 'completed') continue;
-    const current = latest.get(s.participant_id);
-    if (!current || s.created_at > current.created_at) latest.set(s.participant_id, s);
+    const key = `${s.set_code ?? ''}\n${s.participant_id}`;
+    const current = latest.get(key);
+    if (!current || s.created_at > current.created_at) latest.set(key, s);
   }
   return [...latest.values()];
+}
+
+// Participants with a completed main session in some active sets but not all of them
+// (PLAN.md §9 D38), with the codes they are missing. Sorted by participant ID.
+export function missingSets(sessions, activeCodes) {
+  const done = new Map();
+  for (const s of sessions) {
+    if (!isReal(s) || s.status !== 'completed' || !activeCodes.includes(s.set_code)) continue;
+    if (!done.has(s.participant_id)) done.set(s.participant_id, { id: s.participant_id_raw, codes: new Set() });
+    done.get(s.participant_id).codes.add(s.set_code);
+  }
+  return [...done.entries()]
+    .map(([key, { id, codes }]) => ({ key, participantId: id, missing: activeCodes.filter((c) => !codes.has(c)) }))
+    .filter((p) => p.missing.length > 0)
+    .sort((a, b) => (a.key < b.key ? -1 : 1))
+    .map(({ participantId, missing }) => ({ participantId, missing }));
 }
 
 // Mean of each metric over the given sessions, skipping empty values. n is per metric.
@@ -40,10 +58,11 @@ export function metricMeans(sessions) {
   return means;
 }
 
-// Text matches name or participant ID, case-insensitive.
-export function filterSessions(sessions, { query = '', status = 'all', includeTrial = false } = {}) {
+// Text matches name or participant ID, case-insensitive. set is a set code or 'all'.
+export function filterSessions(sessions, { query = '', status = 'all', includeTrial = false, set = 'all' } = {}) {
   const q = query.trim().toLowerCase();
   return sessions.filter((s) => (includeTrial || isReal(s))
+    && (set === 'all' || s.set_code === set)
     && (status === 'all' || s.status === status)
     && (q === '' || s.participant_name.toLowerCase().includes(q) || s.participant_id.includes(q)));
 }

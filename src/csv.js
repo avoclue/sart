@@ -25,7 +25,7 @@ const col = (key) => ({ header: key, value: (row) => row[key] });
 const wibCol = (key) => ({ header: `${key}_wib`, value: (row) => toWib(row[key]) });
 
 export const SESSION_COLUMNS = [
-  col('id'), wibCol('created_at'), col('participant_id'), col('participant_id_raw'),
+  col('id'), wibCol('created_at'), col('set_code'), col('participant_id'), col('participant_id_raw'),
   col('participant_name'), col('attempt_no'), col('is_trial'), col('status'), wibCol('consent_at'),
   col('display_duration_ms'), col('total_trials'), col('target_frequency'), col('trials_completed'),
   col('correct_hits'), col('commission_errors'), col('omission_errors'), col('correct_withholds'),
@@ -37,7 +37,7 @@ export const SESSION_COLUMNS = [
 ];
 
 export const TRIAL_COLUMNS = [
-  col('session_id'), col('participant_id'), col('attempt_no'), col('is_trial'), col('status'),
+  col('session_id'), col('set_code'), col('participant_id'), col('attempt_no'), col('is_trial'), col('status'),
   col('feedback_mode'), col('random_font_size'), col('random_font_color'), col('balanced_digits'), col('mask_ms'),
   col('response_mode'), col('practice_no'), col('visit_id'),
   col('trial_no'), col('digit'), col('is_target'), col('responded'), col('rt_ms'), col('outcome'),

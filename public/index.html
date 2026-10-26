@@ -21,7 +21,22 @@
       <h1 id="form-title">[JUDUL STUDI]</h1>
       <p class="lead">Tes ini mengukur seberapa lama Anda bisa menjaga perhatian pada satu tugas sederhana.</p>
 
-      <form id="identity-form" novalidate>
+      <!-- The test set comes from the link (/?set=b) or is chosen below on the plain link (PLAN.md §9 D38). -->
+      <p id="sets-status" class="status" role="status">Memuat tes...</p>
+      <div id="sets-error" class="status-error" role="alert" hidden>
+        <p id="sets-error-text"></p>
+        <button type="button" id="sets-retry" class="btn-secondary" hidden>Coba muat lagi</button>
+      </div>
+
+      <form id="identity-form" novalidate hidden>
+        <p id="set-tag" class="set-tag" hidden></p>
+        <div class="field" id="set-field" hidden>
+          <label for="set-select">Set</label>
+          <select id="set-select" required aria-describedby="set-error">
+            <option value="">— Pilih set —</option>
+          </select>
+          <p class="field-error" id="set-error" hidden>Pilih set yang diminta peneliti.</p>
+        </div>
         <div class="field">
           <label for="name">Nama</label>
           <input id="name" name="name" type="text" autocomplete="name" maxlength="100" required aria-describedby="name-error">
@@ -51,10 +66,11 @@
     <!-- Instructions, with settings loading and error states -->
     <section id="screen-instructions" class="screen panel" aria-labelledby="instructions-title" hidden>
       <h1 id="instructions-title">Petunjuk</h1>
+      <p id="instructions-set" class="set-tag" hidden></p>
 
       <p id="settings-loading" class="status" role="status">Memuat tes...</p>
       <div id="settings-error" class="status-error" role="alert" hidden>
-        <p>Tes belum bisa dimuat. Periksa koneksi internet Anda, lalu coba lagi.</p>
+        <p id="settings-error-text"></p>
         <button type="button" id="settings-retry" class="btn-secondary">Coba muat lagi</button>
       </div>
 

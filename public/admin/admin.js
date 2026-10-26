@@ -1,9 +1,9 @@
 // Admin page: settings form, overview, session table, session detail and CSV links.
 
 import { API_BASE } from '../js/config.js';
-import { adminSettingsProblem, sessionDurationMs } from '../js/sart.js';
+import { adminSettingsProblem, setMetaProblem, sessionDurationMs, DEFAULT_SETTINGS } from '../js/sart.js';
 import {
-  participantCount, realSessionCount, latestCompletedPerParticipant, metricMeans,
+  participantCount, realSessionCount, latestCompletedPerParticipant, missingSets, metricMeans,
   filterSessions, sortSessions,
 } from '../js/dashboard.js';
 
@@ -15,6 +15,10 @@ const GREEN = '#1e7a3c';
 const ORANGE = '#b45309';
 
 let sessions = [];
+let sessionsLoaded = false;
+// Test sets (PLAN.md §9 D38), and the id of the set in the form, or null while adding one.
+let sets = [];
+let editing = null;
 let sort = { key: 'created_at', direction: 'desc' };
 const charts = {};
 
@@ -69,6 +73,8 @@ const settingFields = {
 // Which field a settings problem is about, so the cursor can go there.
 // The first match wins, so the more specific practice-length pattern comes first.
 const PROBLEM_FIELDS = [
+  [/Kode set/, 'set-code'],
+  [/Label set/, 'set-label'],
   [/Durasi angka/, 'set-duration'],
   [/Mask harus/, 'set-mask'],
   [/angka per sesi latihan|jumlah angka latihan/, 'set-practice-trials'],
@@ -142,27 +148,128 @@ function updateEstimate() {
 $('settings-form').addEventListener('input', updateEstimate);
 $('settings-form').addEventListener('change', updateEstimate);
 
-async function loadSettings() {
-  $('settings-status').hidden = false;
-  $('settings-error').hidden = true;
-  $('settings-form').hidden = true;
-  try {
-    fillSettings(await api('/api/admin/settings'));
-    $('settings-status').hidden = true;
-    $('settings-form').hidden = false;
-  } catch (err) {
-    $('settings-status').hidden = true;
-    $('settings-error-text').textContent = `Pengaturan tidak bisa dimuat (${err.message}). Periksa koneksi, lalu coba lagi.`;
-    $('settings-error').hidden = false;
+// Test sets (PLAN.md §9 D38)
+
+const setName = (set) => `${set.label} (${set.code})${set.isActive ? '' : ', nonaktif'}`;
+
+function clearProblems() {
+  for (const [, id] of PROBLEM_FIELDS) $(id).removeAttribute('aria-invalid');
+}
+
+// set.id is null for a set that is being added and not saved yet; copiedFrom names its source.
+function fillSet(set, copiedFrom = null) {
+  editing = set.id;
+  const isNew = editing === null;
+  const used = set.sessionCount > 0;
+  fillSettings(set);
+  clearProblems();
+  $('set-code').value = set.code;
+  $('set-label').value = set.label;
+  $('set-active').checked = set.isActive;
+  // Sessions refer to the set by its code, so a used code is fixed.
+  $('set-code').readOnly = used;
+  $('set-legend').textContent = copiedFrom ? `Set baru (salinan dari ${copiedFrom})` : isNew ? 'Set baru' : 'Set';
+  $('set-link').hidden = isNew;
+  if (!isNew) {
+    const code = document.createElement('code');
+    code.textContent = `${window.location.origin}/?set=${encodeURIComponent(set.code)}`;
+    $('set-link').replaceChildren('Tautan untuk partisipan: ', code);
+  }
+  $('set-usage').hidden = isNew;
+  $('set-usage').textContent = used
+    ? `Dipakai oleh ${set.sessionCount} sesi, jadi kodenya tidak bisa diubah dan set ini tidak bisa dihapus. Nonaktifkan jika tidak dipakai lagi.`
+    : 'Belum dipakai sesi.';
+  $('set-picker').disabled = isNew;
+  $('set-add').disabled = isNew;
+  $('set-cancel').hidden = !isNew || sets.length === 0;
+  $('set-delete').hidden = isNew || used;
+  $('set-save').textContent = isNew ? 'Simpan set baru' : 'Simpan set';
+  if (!isNew) $('set-picker').value = String(set.id);
+}
+
+// A new set starts as a copy of a saved set's settings, with its own code and label.
+function startNewSet(source) {
+  fillSet({ ...source, id: null, code: '', label: '', isActive: true, sessionCount: 0 }, source.label ?? null);
+  $('settings-saved').textContent = '';
+  $('set-code').focus();
+}
+
+// The set picker, the dashboard set filter and the CSV set choice.
+function renderSetOptions() {
+  const picked = $('set-picker').value;
+  $('set-picker').replaceChildren(...sets.map((set) => new Option(setName(set), String(set.id))));
+  $('set-picker').value = editing === null ? picked : String(editing);
+  const codes = [...new Set([...sets.map((set) => set.code), ...sessions.map((s) => s.set_code).filter(Boolean)])].sort();
+  for (const [id, allValue] of [['filter-set', 'all'], ['export-set', '']]) {
+    const select = $(id);
+    const keep = select.value;
+    select.replaceChildren(new Option('Semua set', allValue), ...codes.map((code) => {
+      const set = sets.find((x) => x.code === code);
+      return new Option(set ? setName(set) : code, code);
+    }));
+    select.value = codes.includes(keep) ? keep : allValue;
   }
 }
 
+async function loadSets(selectId = editing) {
+  $('settings-error').hidden = true;
+  try {
+    sets = await api('/api/admin/sets');
+  } catch (err) {
+    $('settings-status').hidden = true;
+    $('settings-error-text').textContent = `Set tidak bisa dimuat (${err.message}). Periksa koneksi, lalu coba lagi.`;
+    $('settings-error').hidden = false;
+    return;
+  }
+  renderSetOptions();
+  $('settings-status').hidden = true;
+  $('set-bar').hidden = false;
+  $('settings-form').hidden = false;
+  if (sets.length === 0) startNewSet(DEFAULT_SETTINGS);
+  else fillSet(sets.find((set) => set.id === selectId) ?? sets[0]);
+  if (sessionsLoaded) {
+    renderOverview();
+    renderTable();
+  }
+}
+
+$('set-picker').addEventListener('change', () => {
+  $('settings-saved').textContent = '';
+  fillSet(sets.find((set) => set.id === Number($('set-picker').value)));
+});
+$('set-add').addEventListener('click', () => startNewSet(sets.find((set) => set.id === editing)));
+$('set-cancel').addEventListener('click', () => {
+  $('settings-saved').textContent = '';
+  fillSet(sets.find((set) => set.id === Number($('set-picker').value)) ?? sets[0]);
+});
+
+$('set-delete').addEventListener('click', async () => {
+  const set = sets.find((x) => x.id === editing);
+  if (!window.confirm(`Hapus set "${set.label}" (${set.code})? Pengaturannya hilang dan tautannya tidak bisa dibuka lagi.`)) return;
+  const saved = $('settings-saved');
+  try {
+    await api(`/api/admin/sets/${set.id}`, { method: 'DELETE' });
+  } catch (err) {
+    saved.className = 'status-error';
+    saved.textContent = `Gagal menghapus (${err.message.replace(/\.$/, '')}).`;
+    return;
+  }
+  await loadSets(null);
+  saved.className = 'status';
+  saved.textContent = `Set "${set.label}" dihapus.`;
+});
+
 $('settings-form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const body = readSettings();
+  const body = {
+    ...readSettings(),
+    code: $('set-code').value,
+    label: $('set-label').value,
+    isActive: $('set-active').checked,
+  };
   const saved = $('settings-saved');
-  const problem = adminSettingsProblem(body);
-  for (const [, id] of PROBLEM_FIELDS) $(id).removeAttribute('aria-invalid');
+  const problem = setMetaProblem(body) ?? adminSettingsProblem(body);
+  clearProblems();
   if (problem) {
     const field = PROBLEM_FIELDS.find(([pattern]) => pattern.test(problem))?.[1];
     if (field) {
@@ -176,19 +283,24 @@ $('settings-form').addEventListener('submit', async (event) => {
   saved.className = 'status';
   saved.textContent = 'Menyimpan...';
   try {
-    fillSettings(await api('/api/admin/settings', {
-      method: 'PUT',
+    const result = await api(editing === null ? '/api/admin/sets' : `/api/admin/sets/${editing}`, {
+      method: editing === null ? 'POST' : 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    }));
+    });
+    await loadSets(result.id);
     saved.textContent = `Tersimpan pukul ${wib.format(new Date()).slice(11, 16)} WIB.`;
   } catch (err) {
     saved.className = 'status-error';
-    saved.textContent = `Gagal menyimpan (${err.message}). Coba lagi.`;
+    saved.textContent = `Gagal menyimpan (${err.message.replace(/\.$/, '')}). Coba lagi.`;
   }
 });
 
-$('settings-reload').addEventListener('click', loadSettings);
+$('settings-reload').addEventListener('click', () => {
+  $('settings-status').hidden = false;
+  loadSets();
+});
+
 
 // "?" toggletips: a click, tap or Enter opens the explanation under the row and a second
 // one closes it. Escape or clicking elsewhere closes it too.
@@ -263,10 +375,32 @@ function stripChart(name, canvas, rows, valueKey, format, axis) {
   });
 }
 
+// Sessions of the set chosen in the set filter (PLAN.md §9 D38).
+function sessionsInSet() {
+  const set = $('filter-set').value;
+  return set === 'all' ? sessions : sessions.filter((s) => s.set_code === set);
+}
+
+// Only shown with two or more active sets; it covers every session, whatever the set filter.
+function renderMissingSets() {
+  const activeCodes = sets.filter((set) => set.isActive).map((set) => set.code);
+  $('missing-sets').hidden = activeCodes.length < 2;
+  if (activeCodes.length < 2) return;
+  const missing = missingSets(sessions, activeCodes);
+  $('missing-none').hidden = missing.length > 0;
+  $('missing-list').replaceChildren(...missing.map((p) => {
+    const li = document.createElement('li');
+    li.textContent = `${p.participantId}: belum di set ${p.missing.join(', ')}`;
+    return li;
+  }));
+}
+
 function renderOverview() {
-  const used = latestCompletedPerParticipant(sessions);
-  $('count-participants').textContent = participantCount(sessions);
-  $('count-sessions').textContent = realSessionCount(sessions);
+  const scoped = sessionsInSet();
+  const used = latestCompletedPerParticipant(scoped);
+  renderMissingSets();
+  $('count-participants').textContent = participantCount(scoped);
+  $('count-sessions').textContent = realSessionCount(scoped);
   $('count-used').textContent = used.length;
   $('overview-empty').hidden = used.length > 0;
   $('overview-data').hidden = used.length === 0;
@@ -301,6 +435,7 @@ const sessionKindLabel = (s) => (s.is_trial ? `Latihan${s.practice_no ? ` ${s.pr
 
 const COLUMNS = [
   ['created_at', 'Waktu (WIB)', (s) => wib.format(new Date(s.created_at))],
+  ['set_code', 'Set', (s) => s.set_code ?? ''],
   ['participant_name', 'Nama', (s) => s.participant_name],
   ['participant_id', 'ID', (s) => s.participant_id_raw],
   ['attempt_no', 'Ke-', (s) => s.attempt_no, true],
@@ -366,6 +501,7 @@ function renderTable() {
     query: $('filter-query').value,
     status: $('filter-status').value,
     includeTrial: $('filter-trial').checked,
+    set: $('filter-set').value,
   });
   const rows = sortSessions(filtered, sort.key, sort.direction).map((s) => {
     const tr = document.createElement('tr');
@@ -403,6 +539,10 @@ function renderTable() {
 for (const id of ['filter-query', 'filter-status', 'filter-trial']) {
   $(id).addEventListener('input', renderTable);
 }
+$('filter-set').addEventListener('change', () => {
+  renderOverview();
+  renderTable();
+});
 
 // Session detail: RT by trial
 
@@ -410,7 +550,7 @@ async function openDetail(s) {
   const detail = $('detail');
   detail.hidden = false;
   $('detail-title').textContent = `Detail sesi ${s.participant_id_raw}, percobaan ke-${s.attempt_no}`;
-  $('detail-summary').textContent = `${s.participant_name}. ${sessionKindLabel(s)}, `
+  $('detail-summary').textContent = `${s.participant_name}. Set ${s.set_code ?? '-'}, ${sessionKindLabel(s).toLowerCase()}, `
     + `${s.status === 'completed' ? 'selesai' : 'dihentikan'}. Pengaturan: ${s.display_duration_ms} ms, `
     + `${s.total_trials} angka, ${formatPercent(s.target_frequency)}% angka 3, `
     + `ukuran angka ${s.random_font_size ? 'acak' : 'tetap'}, warna angka ${s.random_font_color ? 'acak' : 'tetap'}, angka ${s.balanced_digits ? 'seimbang' : 'tidak seimbang'}, `
@@ -519,6 +659,8 @@ async function loadSessions() {
     $('data-error').hidden = false;
     return;
   }
+  sessionsLoaded = true;
+  renderSetOptions();
   renderOverview();
   renderTable();
 }
@@ -527,11 +669,17 @@ $('data-reload').addEventListener('click', loadSessions);
 
 // CSV links
 
-$('export-trial').addEventListener('change', () => {
-  const suffix = $('export-trial').checked ? '?include_trial=1' : '';
+function updateExportLinks() {
+  const params = new URLSearchParams();
+  if ($('export-set').value) params.set('set', $('export-set').value);
+  if ($('export-trial').checked) params.set('include_trial', '1');
+  const suffix = params.toString() ? `?${params}` : '';
   $('export-sessions').href = `${API_BASE}/api/admin/export/sessions.csv${suffix}`;
   $('export-trials').href = `${API_BASE}/api/admin/export/trials.csv${suffix}`;
-});
+}
 
-loadSettings();
+$('export-trial').addEventListener('change', updateExportLinks);
+$('export-set').addEventListener('change', updateExportLinks);
+
+loadSets();
 loadSessions();

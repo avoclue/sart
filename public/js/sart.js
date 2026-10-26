@@ -84,6 +84,29 @@ export function adminSettingsProblem(s) {
   return null;
 }
 
+// A test set's code goes in the link (/?set=b) and on every session; its label is shown to
+// participants (PLAN.md §9 D38). Codes are stored lowercase and matched case-insensitively.
+export const SET_CODE_MAX = 20;
+export const SET_LABEL_MAX = 60;
+const SET_CODE_PATTERN = /^[a-z0-9-]+$/;
+
+export function normaliseSetCode(code) {
+  return typeof code === 'string' ? code.trim().toLowerCase() : '';
+}
+
+// Why a set's code or label is not allowed, in Indonesian for the admin page, or null.
+export function setMetaProblem({ code, label }) {
+  const c = normaliseSetCode(code);
+  if (c.length === 0) return 'Kode set wajib diisi.';
+  if (c.length > SET_CODE_MAX || !SET_CODE_PATTERN.test(c)) {
+    return `Kode set hanya boleh huruf kecil, angka dan tanda -, paling banyak ${SET_CODE_MAX} karakter.`;
+  }
+  const l = typeof label === 'string' ? label.trim() : '';
+  if (l.length === 0) return 'Label set wajib diisi.';
+  if (l.length > SET_LABEL_MAX) return `Label set paling banyak ${SET_LABEL_MAX} karakter.`;
+  return null;
+}
+
 // What the participant may do after a practice session (PLAN.md §9 D33). Practice 1 is
 // required; after practice N only the main session is offered. While the study's practice
 // period is on (trialMode), the main session is never offered.
